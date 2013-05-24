@@ -1,0 +1,12 @@
+web:
+    port: 8888
+    host: 'localhost:8888'
+    cookie_secret: 'dis is super sekrit'
+
+db:
+    host: localhost
+    user: jmw327
+    password: jmw327
+    database: pywebgo
+
+# vim: set et ft=yaml:

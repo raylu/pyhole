@@ -1,0 +1,3 @@
+[submodule "lesscss.git"]
+	path = lesscss.git
+	url = git://github.com/raylu/lesscss-python3.git
