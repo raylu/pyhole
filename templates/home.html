@@ -4,12 +4,12 @@
 
 <form action="/login" method="post">
 	<label for="username">username</label>
-	<input type="text" name="username" id="username" />
-	<br />
+	<input type="text" name="username" id="username">
+	<br>
 	<label for="password">password</label>
-	<input type="text" name="password" id="password" />
-	<br />
-	<input type="submit" />
+	<input type="text" name="password" id="password">
+	<br>
+	<input type="submit">
 	{% module xsrf_form_html() %}
 </form>
 
