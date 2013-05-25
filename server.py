@@ -2,14 +2,13 @@
 
 import json
 from lesscss import lessc
-import tornado.gen
-import tornado.httpclient
 import tornado.ioloop
 import tornado.web
 import operator
 import os
 
 import config
+import db
 
 class BaseHandler(tornado.web.RequestHandler):
 	def render(self, *args, **kwargs):
@@ -21,11 +20,15 @@ class BaseHandler(tornado.web.RequestHandler):
 		return s.replace(b'\n', b'') # this is like Django's {% spaceless %}
 
 class MainHandler(BaseHandler):
-	@tornado.web.asynchronous
-	@tornado.gen.coroutine
 	def get(self):
 		self.render('home.html')
 
+class LoginHandler(BaseHandler):
+	def post(self):
+		username = self.get_argument('username')
+		password = self.get_argument('password')
+		status = db.check_login(username, password)
+		self.render('login.html', status=status)
 
 class CSSHandler(tornado.web.RequestHandler):
 	def get(self, css_path):
@@ -39,7 +42,8 @@ if __name__ == '__main__':
 	tornado.web.Application(
 		handlers=[
 			(r'/', MainHandler),
-			(r"/(css/.+)\.css", CSSHandler),
+			(r'/login', LoginHandler),
+			(r'/(css/.+)\.css', CSSHandler),
 		],
 		template_path=os.path.join(os.path.dirname(__file__), 'templates'),
 		static_path=os.path.join(os.path.dirname(__file__), 'static'),
