@@ -9,7 +9,7 @@ window.addEvent('domready', function() {
 
 	var ws = new WebSocket(window.config.wsurl);
 	ws.onopen = function(e) {
-		console.debug("connected to", e.target.url);
+		console.debug('connected to', e.target.url);
 		ws.send('HELO ' + document.cookie);
 	};
 	ws.onmessage = function (e) {
@@ -17,8 +17,9 @@ window.addEvent('domready', function() {
 		drawNode(map, 100, 75);
 		stage.add(layer);
 	}
-	ws.onerror = function(e) {
+	ws.onerror = ws.onclose = function(e) {
 		console.error(e);
+		modal('ruh roh!');
 		ws.close();
 	}
 
@@ -65,14 +66,6 @@ window.addEvent('domready', function() {
 		text.on('click', _handleClick);
 		ellipse.on('click', _handleClick);
 	}
-
-	var add = $$('.add')[0];
-	var src = $('src');
-	function handleClick(system) {
-		src.set('value', system.name);
-		add.setStyle('display', 'block');
-	}
-
 	function drawLink(x1, y1, x2, y2) {
 		var line = new Kinetic.Line({
 			'x': 0,
@@ -81,5 +74,21 @@ window.addEvent('domready', function() {
 			'stroke': '#ccc',
 		});
 		layer.add(line);
+	}
+
+	var add = $$('.add')[0];
+	var src = $('src');
+	function handleClick(system) {
+		src.set('value', system.name);
+		add.setStyle('display', 'block');
+	}
+
+	function modal(text) {
+		$('modal').empty().appendText(text);
+		var mbg = $('modal_bg').setStyle('display', 'block');
+		mbg.addEvent('click', function() {
+			mbg.setStyle('display', 'none');
+			mbg.removeEvents('click');
+		});
 	}
 });
