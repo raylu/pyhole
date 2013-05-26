@@ -17,21 +17,19 @@
 {% block main %}
 
 <div id="map"></div>
-<div class="add">
-	<label for="src">add system connected to</label>
-	<input type="text" name="src" disabled="disabled" id="src">
+<div class="add"><form id="add">
+	<label for="src">add system connected to</label>&nbsp;
+	<input type="text" disabled="disabled" id="src">
 	<br>
-	<label for="dest">name:</label><input type="text" name="dest">
+	<label for="dest">name:</label><input type="text" id="dest"> (Jita)
 	<br>
-	<label for="to">wh to:</label><input type="text" name="to">
+	<label for="to">wh to:</label><input type="text" id="to"> (K162)
 	<br>
-	<label for="from">wh from:</label><input type="text" name="from">
+	<label for="from">wh from:</label><input type="text" id="from">
 	<br>
-	<label for="sig_to">sig to:</label><input type="text" name="sig_to">
-	<br>
-	<label for="sig_from">sig from:</label><input type="text" name="sig_from">
+	<input type="checkbox" id="eol"><label for="eol">EoL</label>
 	<br>
 	<input type="submit" value="add">
-</div>
+</form></div>
 
 {% end %}

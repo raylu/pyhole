@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import http.cookies
+import json
 from lesscss import lessc
 import tornado.ioloop
 import tornado.web
@@ -50,6 +51,8 @@ class MapWSHandler(tornado.websocket.WebSocketHandler):
 		split = message.split(' ', 1)
 		if split[0] == 'HELO':
 			self.helo(split[1])
+		elif split[0] == 'ADD':
+			self.add(split[1])
 
 	def helo(self, cookie):
 		# check that the user has a valid user_id
@@ -62,6 +65,10 @@ class MapWSHandler(tornado.websocket.WebSocketHandler):
 		r = db.query_one('SELECT json from maps')
 		map_data = r.json
 		self.write_message(map_data)
+
+	def add(self, system_json):
+		system = json.loads(system_json)
+		print('ADD', system)
 
 class CSSHandler(tornado.web.RequestHandler):
 	def get(self, css_path):

@@ -54,6 +54,7 @@ window.addEvent('domready', function() {
 			'x': x,
 			'y': y-7,
 			'fontSize': 14,
+			'fontFamily': 'sans-serif',
 			'fill': '#ccc',
 		});
 		var textWidth = text.getTextWidth();
@@ -76,12 +77,36 @@ window.addEvent('domready', function() {
 		layer.add(line);
 	}
 
-	var add = $$('.add')[0];
+	var add_div = $$('.add')[0];
 	var src = $('src');
 	function handleClick(system) {
 		src.set('value', system.name);
-		add.setStyle('display', 'block');
+		add_div.setStyle('display', 'block');
 	}
+	var add_form = $('add');
+	add_form.addEvent('submit', function(e) {
+		e.preventDefault()
+		var o = {};
+		add_form.getChildren('input').each(function(el) {
+			if (el.type === 'submit')
+				return;
+			else if (el.type === 'checkbox') {
+				var checked = el.get('checked');
+				if (checked)
+					o[el.get('id')] = checked;
+			} else if (el.type === 'text') {
+				var val = el.get('value');
+				if (val.length > 0)
+					o[el.get('id')] = val;
+			}
+		});
+		if (o.dest === undefined) {
+			modal("you didn't specify a system name");
+			return;
+		}
+		console.debug('ADD', o);
+		ws.send('ADD ' + JSON.stringify(o));
+	});
 
 	function modal(text) {
 		$('modal').empty().appendText(text);
