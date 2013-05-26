@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+import http.cookies
 from lesscss import lessc
 import tornado.ioloop
 import tornado.web
+import tornado.websocket
 import operator
 import os
 
@@ -43,13 +45,23 @@ class MapHandler(BaseHandler):
 	def get(self):
 		self.render('map.html')
 
-class MapAPIHandler(BaseHandler):
-	@tornado.web.authenticated
-	def get(self):
+class MapWSHandler(tornado.websocket.WebSocketHandler):
+	def on_message(self, message):
+		split = message.split(' ', 1)
+		if split[0] == 'HELO':
+			self.helo(split[1])
+
+	def helo(self, cookie):
+		# check that the user has a valid user_id
+		cookie = http.cookies.SimpleCookie(cookie)
+		try:
+			user_id_cookie = cookie["user_id"].value
+			user_id = int(tornado.web.decode_signed_value(config.web.cookie_secret, "user_id", user_id_cookie))
+		except KeyError:
+			return
 		r = db.query_one('SELECT json from maps')
 		map_data = r.json
-		self.set_header('Content-Type', 'application/json')
-		self.write(map_data)
+		self.write_message(map_data)
 
 class CSSHandler(tornado.web.RequestHandler):
 	def get(self, css_path):
@@ -65,7 +77,7 @@ if __name__ == '__main__':
 			(r'/', MainHandler),
 			(r'/login', LoginHandler),
 			(r'/map', MapHandler),
-			(r'/map.json', MapAPIHandler),
+			(r'/map.ws', MapWSHandler),
 			(r'/(css/.+)\.css', CSSHandler),
 		],
 		template_path=os.path.join(os.path.dirname(__file__), 'templates'),

@@ -2,6 +2,11 @@
 
 {% block js %}
 <script src="//d3lp1msu2r81bx.cloudfront.net/kjs/js/lib/kinetic-v4.5.2.min.js"></script>
+<script>
+	window.config = {
+		'wsurl': 'ws://{{ host }}/map.ws',
+	}
+</script>
 <script src="/static/js/map.js"></script>
 {% end %}
 

@@ -7,17 +7,21 @@ window.addEvent('domready', function() {
 	});
 	var layer = new Kinetic.Layer();
 
-	var req = new Request.JSON({
-		'url': '/map.json',
-		'onSuccess': drawMap,
-	});
-	req.get();
-
-	var ovalWidth = 100;
-	function drawMap(map, raw) {
+	var ws = new WebSocket(window.config.wsurl);
+	ws.onopen = function(e) {
+		console.debug("connected to", e.target.url);
+		ws.send('HELO ' + document.cookie);
+	};
+	ws.onmessage = function (e) {
+		var map = JSON.parse(e.data);
 		drawNode(map, 100, 75);
 		stage.add(layer);
 	}
+	ws.onerror = function(e) {
+		console.error(e);
+		ws.close();
+	}
+
 	function drawNode(node, x, y) {
 		drawSystem(node, x, y);
 		var new_lines = 0;
@@ -31,6 +35,7 @@ window.addEvent('domready', function() {
 		return new_lines || 1;
 	}
 
+	var ovalWidth = 100;
 	function drawSystem(system, x, y) {
 		var ellipse = new Kinetic.Circle({
 			'x': x,
