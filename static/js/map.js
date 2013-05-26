@@ -1,4 +1,5 @@
 window.addEvent('domready', function() {
+	'use strict';
 	var stage = new Kinetic.Stage({
 		container: 'map',
 		width: 900,
@@ -11,18 +12,30 @@ window.addEvent('domready', function() {
 		'onSuccess': drawMap,
 	});
 	req.get();
+
+	var ovalWidth = 100;
 	function drawMap(map, raw) {
-		drawSystem(map, 100, 75);
-		drawSystem(map.connections[0], 250, 75);
+		drawNode(map, 100, 75);
 		stage.add(layer);
+	}
+	function drawNode(node, x, y) {
+		drawSystem(node, x, y);
+		var new_lines = 0;
+		if (node.connections) {
+			for (var i = 0; i < node.connections.length; i++) {
+				var child = node.connections[i];
+				drawLink(x, y, x + 150, y + new_lines * 75);
+				new_lines += drawNode(child, x + 150, y + new_lines * 75);
+			}
+		}
+		return new_lines || 1;
 	}
 
 	function drawSystem(system, x, y) {
-		var width = 100;
 		var ellipse = new Kinetic.Circle({
 			'x': x,
 			'y': y,
-			'radius': width / 4,
+			'radius': ovalWidth / 4,
 			'fill': '#705',
 			'stroke': '#ccc',
 			'strokeWidth': 2,
@@ -42,8 +55,18 @@ window.addEvent('domready', function() {
 		text.setX(x - textWidth / 2);
 		text.on('click', handleClick);
 		layer.add(text);
-
 	}
+
+	function drawLink(x1, y1, x2, y2) {
+		var line = new Kinetic.Line({
+			'x': 0,
+			'y': 0,
+			'points': [x1+ovalWidth/2, y1, x2-ovalWidth/2, y2],
+			'stroke': '#ccc',
+		});
+		layer.add(line);
+	}
+
 	function handleClick() {
 		console.log(arguments);
 	}
