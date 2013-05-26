@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import json
 from lesscss import lessc
 import tornado.ioloop
 import tornado.web
@@ -39,6 +38,19 @@ class LoginHandler(BaseHandler):
 			success = True
 		self.render('login.html', success=success)
 
+class MapHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		self.render('map.html')
+
+class MapAPIHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		r = db.query_one('SELECT json from maps')
+		map_data = r.json
+		self.set_header('Content-Type', 'application/json')
+		self.write(map_data)
+
 class CSSHandler(tornado.web.RequestHandler):
 	def get(self, css_path):
 		css_path = os.path.join(os.path.dirname(__file__), 'static', css_path) + '.less'
@@ -52,12 +64,15 @@ if __name__ == '__main__':
 		handlers=[
 			(r'/', MainHandler),
 			(r'/login', LoginHandler),
+			(r'/map', MapHandler),
+			(r'/map.json', MapAPIHandler),
 			(r'/(css/.+)\.css', CSSHandler),
 		],
 		template_path=os.path.join(os.path.dirname(__file__), 'templates'),
 		static_path=os.path.join(os.path.dirname(__file__), 'static'),
 		cookie_secret=config.web.cookie_secret,
 		xsrf_cookies=True,
+		login_url='/login',
 		debug=True,
 	).listen(config.web.port)
 	print('Listening on :%d' % config.web.port)
