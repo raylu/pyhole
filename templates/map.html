@@ -5,8 +5,28 @@
 <script src="/static/js/map.js"></script>
 {% end %}
 
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/css/map.css" />
+{% end %}
+
 {% block main %}
 
 <div id="map"></div>
+<div class="add">
+	<label for="src">add system connected to</label>
+	<input type="text" name="src" disabled="disabled" id="src">
+	<br>
+	<label for="dest">name:</label><input type="text" name="dest">
+	<br>
+	<label for="to">wh to:</label><input type="text" name="to">
+	<br>
+	<label for="from">wh from:</label><input type="text" name="from">
+	<br>
+	<label for="sig_to">sig to:</label><input type="text" name="sig_to">
+	<br>
+	<label for="sig_from">sig from:</label><input type="text" name="sig_from">
+	<br>
+	<input type="submit" value="add">
+</div>
 
 {% end %}

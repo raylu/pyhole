@@ -41,7 +41,6 @@ window.addEvent('domready', function() {
 			'strokeWidth': 2,
 			'scaleX': 2,
 		});
-		ellipse.on('click', handleClick);
 		layer.add(ellipse);
 		// draw text
 		var text = new Kinetic.Text({
@@ -53,8 +52,20 @@ window.addEvent('domready', function() {
 		});
 		var textWidth = text.getTextWidth();
 		text.setX(x - textWidth / 2);
-		text.on('click', handleClick);
 		layer.add(text);
+
+		function _handleClick(e) {
+			handleClick(system);
+		}
+		text.on('click', _handleClick);
+		ellipse.on('click', _handleClick);
+	}
+
+	var add = $$('.add')[0];
+	var src = $('src');
+	function handleClick(system) {
+		src.set('value', system.name);
+		add.setStyle('display', 'block');
 	}
 
 	function drawLink(x1, y1, x2, y2) {
@@ -65,9 +76,5 @@ window.addEvent('domready', function() {
 			'stroke': '#ccc',
 		});
 		layer.add(line);
-	}
-
-	function handleClick() {
-		console.log(arguments);
 	}
 });
