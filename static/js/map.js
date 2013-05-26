@@ -5,7 +5,7 @@ window.addEvent('domready', function() {
 		width: 900,
 		height: 300
 	});
-	var layer = new Kinetic.Layer();
+	var layer = null;
 
 	var ws = new WebSocket(window.config.wsurl);
 	ws.onopen = function(e) {
@@ -14,6 +14,9 @@ window.addEvent('domready', function() {
 	};
 	ws.onmessage = function (e) {
 		var map = JSON.parse(e.data);
+		if (layer !== null)
+			layer.destroy();
+		layer = new Kinetic.Layer();
 		drawNode(map, 100, 75);
 		stage.add(layer);
 	}

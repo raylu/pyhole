@@ -1,6 +1,7 @@
 import binascii
 import hashlib
 import hmac
+import json
 import oursql
 import os
 
@@ -52,6 +53,32 @@ def check_login(username, password):
 	h = hmac.new(salt, password.encode('utf-8'), hashlib.sha256)
 	if h.hexdigest() == r.password:
 		return r.id
+
+class UpdateError:
+	pass
+def update_map(system):
+	def update_node(node):
+		if node['name'] == system['src']:
+			node.setdefault('connections', [])
+			o = {'name': system['dest']}
+			if 'to' in system:
+				o['to'] = system['to']
+			if 'from' in system:
+				o['from'] = system['from'],
+			node['connections'].append(o)
+			return True
+		if 'connections' in node:
+			for c in node['connections']:
+				if update_node(c):
+					return True
+
+	with conn.cursor() as c:
+		c.execute('SELECT json from maps')
+		r = c.fetchone()
+		map_data = json.loads(r[0])
+		if not update_node(map_data):
+			raise UpdateError('src system not found')
+		c.execute('UPDATE maps SET json = ?', (json.dumps(map_data),))
 
 class DBRow:
 	def __str__(self):

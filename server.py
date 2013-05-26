@@ -54,6 +54,11 @@ class MapWSHandler(tornado.websocket.WebSocketHandler):
 		elif split[0] == 'ADD':
 			self.add(split[1])
 
+	def __send_map(self):
+		r = db.query_one('SELECT json from maps')
+		map_data = r.json
+		self.write_message(map_data)
+
 	def helo(self, cookie):
 		# check that the user has a valid user_id
 		cookie = http.cookies.SimpleCookie(cookie)
@@ -62,13 +67,12 @@ class MapWSHandler(tornado.websocket.WebSocketHandler):
 			user_id = int(tornado.web.decode_signed_value(config.web.cookie_secret, "user_id", user_id_cookie))
 		except KeyError:
 			return
-		r = db.query_one('SELECT json from maps')
-		map_data = r.json
-		self.write_message(map_data)
+		self.__send_map()
 
 	def add(self, system_json):
 		system = json.loads(system_json)
-		print('ADD', system)
+		db.update_map(system)
+		self.__send_map()
 
 class CSSHandler(tornado.web.RequestHandler):
 	def get(self, css_path):
