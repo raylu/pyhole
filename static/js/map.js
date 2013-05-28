@@ -3,9 +3,11 @@ window.addEvent('domready', function() {
 	var stage = new Kinetic.Stage({
 		container: 'map',
 		width: 900,
-		height: 300
+		height: 0,
 	});
 	var layer = null;
+	var rowHeight = 75;
+	var ovalWidth = 100;
 
 	var ws = new WebSocket(window.config.wsurl);
 	ws.onopen = function(e) {
@@ -17,7 +19,8 @@ window.addEvent('domready', function() {
 		if (layer !== null)
 			layer.destroy();
 		layer = new Kinetic.Layer();
-		drawNode(map, 100, 75);
+		var rows = drawNode(map, 100, 75);
+		stage.setHeight((rows + 1) * rowHeight);
 		stage.add(layer);
 	}
 	ws.onerror = ws.onclose = function(e) {
@@ -32,14 +35,13 @@ window.addEvent('domready', function() {
 		if (node.connections) {
 			for (var i = 0; i < node.connections.length; i++) {
 				var child = node.connections[i];
-				drawLink(x, y, x + 150, y + new_lines * 75);
-				new_lines += drawNode(child, x + 150, y + new_lines * 75);
+				drawLink(x, y, x + 150, y + new_lines * rowHeight);
+				new_lines += drawNode(child, x + 150, y + new_lines * rowHeight);
 			}
 		}
 		return new_lines || 1;
 	}
 
-	var ovalWidth = 100;
 	function drawSystem(system, x, y) {
 		var ellipse = new Kinetic.Circle({
 			'x': x,
@@ -109,6 +111,11 @@ window.addEvent('domready', function() {
 		}
 		console.debug('ADD', o);
 		ws.send('ADD ' + JSON.stringify(o));
+
+		['dest', 'to', 'from'].each(function(id) {
+			$(id).set('value', '');
+		});
+		$('eol').set('checked', false);
 	});
 
 	function modal(text) {
