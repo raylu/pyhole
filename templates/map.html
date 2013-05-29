@@ -17,6 +17,11 @@
 {% block main %}
 
 <div id="map"></div>
+<div class="info">
+	<span id="system_name"></span>
+	<br>
+	<input type="button" value="delete" id="delete">
+</div>
 <div class="add"><form id="add">
 	<label for="src">add system connected to</label>&nbsp;
 	<input type="text" disabled="disabled" id="src">
@@ -31,5 +36,6 @@
 	<br>
 	<input type="submit" value="add">
 </form></div>
+<div class="clear"></div>
 
 {% end %}

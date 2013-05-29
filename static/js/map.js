@@ -15,16 +15,29 @@ window.addEvent('domready', function() {
 		ws.send('HELO ' + document.cookie);
 	};
 	ws.onmessage = function (e) {
-		var map = JSON.parse(e.data);
-		if (layer !== null)
-			layer.destroy();
-		layer = new Kinetic.Layer();
-		var rows = drawNode(map, 100, 75);
-		stage.setHeight((rows + 1) * rowHeight);
-		stage.add(layer);
+		var data = e.data;
+		var space = data.indexOf(' ');
+		var command = data.substr(0, space);
+		var message = data.substr(space + 1);
+		switch(command) {
+		case 'MAP':
+			var map = JSON.parse(message);
+			if (layer !== null)
+				layer.destroy();
+			layer = new Kinetic.Layer();
+			var rows = drawNode(map, 100, 75);
+			stage.setHeight((rows + 1) * rowHeight);
+			stage.add(layer);
+			break;
+		case 'ERR':
+			modal(message);
+			break;
+		default:
+			console.error('unhandled message', data);
+		}
 	}
 	ws.onerror = ws.onclose = function(e) {
-		console.error(e);
+		console.error('ws closed', e);
 		modal('ruh roh!');
 		ws.close();
 	}
@@ -82,12 +95,18 @@ window.addEvent('domready', function() {
 		layer.add(line);
 	}
 
-	var add_div = $$('.add')[0];
-	var src = $('src');
+	var bottom_divs = $$('.add, .info');
+	var system_name = $('system_name'), src = $('src');
 	function handleClick(system) {
+		system_name.set('text', system.name);
 		src.set('value', system.name);
-		add_div.setStyle('display', 'block');
+		bottom_divs.setStyle('display', 'block');
 	}
+	$('delete').addEvent('click', function(e) {
+		var sn_str = system_name.get('text');
+		console.debug('DELETE', sn_str);
+		ws.send('DELETE ' + sn_str);
+	});
 	var add_form = $('add');
 	add_form.addEvent('submit', function(e) {
 		e.preventDefault()

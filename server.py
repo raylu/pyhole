@@ -53,11 +53,18 @@ class MapWSHandler(tornado.websocket.WebSocketHandler):
 			self.helo(split[1])
 		elif split[0] == 'ADD':
 			self.add(split[1])
+		elif split[0] == 'DELETE':
+			self.delete(split[1])
+		else:
+			print('unhandled message', message)
 
 	def __send_map(self):
 		r = db.query_one('SELECT json from maps')
 		map_data = r.json
-		self.write_message(map_data)
+		self.write_message('MAP ' + map_data)
+
+	def __send_err(self, e):
+		self.write_message('ERR ' + e.message)
 
 	def helo(self, cookie):
 		# check that the user has a valid user_id
@@ -71,8 +78,18 @@ class MapWSHandler(tornado.websocket.WebSocketHandler):
 
 	def add(self, system_json):
 		system = json.loads(system_json)
-		db.update_map(system)
-		self.__send_map()
+		try:
+			db.update_map(system)
+			self.__send_map()
+		except db.UpdateError as e:
+			self.__send_err(e)
+
+	def delete(self, system_name):
+		try:
+			db.delete_system(system_name)
+			self.__send_map()
+		except db.UpdateError as e:
+			self.__send_err(e)
 
 class CSSHandler(tornado.web.RequestHandler):
 	def get(self, css_path):

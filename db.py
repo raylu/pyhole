@@ -54,8 +54,10 @@ def check_login(username, password):
 	if h.hexdigest() == r.password:
 		return r.id
 
-class UpdateError:
-	pass
+class UpdateError(Exception):
+	def __init__(self, message):
+		self.message = message
+
 def update_map(system):
 	def update_node(node):
 		if node['name'] == system['src']:
@@ -78,6 +80,26 @@ def update_map(system):
 		map_data = json.loads(r[0])
 		if not update_node(map_data):
 			raise UpdateError('src system not found')
+		c.execute('UPDATE maps SET json = ?', (json.dumps(map_data),))
+
+def delete_system(system_name):
+	def delete_node(node):
+		if 'connections' in node:
+			for i, c in enumerate(node['connections']):
+				if c['name'] == system_name:
+					node['connections'].pop(i)
+					return True
+				if delete_node(c):
+					return True
+
+	with conn.cursor() as c:
+		c.execute('SELECT json from maps')
+		r = c.fetchone()
+		map_data = json.loads(r[0])
+		if map_data['name'] == system_name:
+			raise UpdateError('cannot delete root node')
+		if not delete_node(map_data): # this will not delete the root node (even if it passed previous check)
+			raise UpdateError('system not found')
 		c.execute('UPDATE maps SET json = ?', (json.dumps(map_data),))
 
 class DBRow:
