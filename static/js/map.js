@@ -48,7 +48,7 @@ window.addEvent('domready', function() {
 		if (node.connections) {
 			for (var i = 0; i < node.connections.length; i++) {
 				var child = node.connections[i];
-				drawLink(x, y, x + 150, y + new_lines * rowHeight);
+				drawLink(x, y, x + 150, y + new_lines * rowHeight, child.eol);
 				new_lines += drawNode(child, x + 150, y + new_lines * rowHeight);
 			}
 		}
@@ -85,12 +85,14 @@ window.addEvent('domready', function() {
 		text.on('click', _handleClick);
 		ellipse.on('click', _handleClick);
 	}
-	function drawLink(x1, y1, x2, y2) {
+	function drawLink(x1, y1, x2, y2, eol) {
 		var line = new Kinetic.Line({
 			'x': 0,
 			'y': 0,
 			'points': [x1+ovalWidth/2, y1, x2-ovalWidth/2, y2],
 			'stroke': '#ccc',
+			'dashArray': [6, 3],
+			'dashArrayEnabled': Boolean(eol), // undefined behaves like true when dashArray is set
 		});
 		layer.add(line);
 	}
@@ -106,6 +108,7 @@ window.addEvent('domready', function() {
 		var sn_str = system_name.get('text');
 		console.debug('DELETE', sn_str);
 		ws.send('DELETE ' + sn_str);
+		bottom_divs.setStyle('display', 'none');
 	});
 	var add_form = $('add');
 	add_form.addEvent('submit', function(e) {

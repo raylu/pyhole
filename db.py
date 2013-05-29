@@ -67,6 +67,8 @@ def update_map(system):
 				o['to'] = system['to']
 			if 'from' in system:
 				o['from'] = system['from'],
+			if 'eol' in system:
+				o['eol'] = system['eol']
 			node['connections'].append(o)
 			return True
 		if 'connections' in node:
