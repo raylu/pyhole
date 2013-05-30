@@ -23,10 +23,15 @@
 		display: none
 		position: absolute
 		top: 30px
-		left: -1px
-		width: 102px
-		padding: 5px 10px
+		left: -5px
+		width: 110px
 		border: 1px solid #aaa
-		border-top: none
 		background-color: #111
+		line-height: 1.8em
 		font-size: 0.8em
+
+		div:
+			padding: 0 10px
+			&.selected:
+				background: #444
+				color: #ddd

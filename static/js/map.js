@@ -39,6 +39,7 @@ window.addEvent('domready', function() {
 					systems.each(function(s) {
 						dest_ac.adopt(new Element('div', {'html': s}));
 					});
+					dest_ac.getElement('div').addClass('selected');
 					dest_ac.setStyle('display', 'block');
 				}
 			}
@@ -78,7 +79,7 @@ window.addEvent('domready', function() {
 		var ellipse = new Kinetic.Circle({
 			'x': x,
 			'y': y,
-			'radius': ovalWidth / 4,
+			'radius': ovalWidth / 4, // radius is half the width but half again because scaleX = 2
 			'fill': '#705',
 			'stroke': '#ccc',
 			'strokeWidth': 2,
@@ -159,6 +160,7 @@ window.addEvent('domready', function() {
 	});
 	var dest = $('dest'), dest_ac = $('dest_ac');
 	dest.addEvent('input', function() {
+		dest_ac.setStyle('display', 'none');
 		var val = dest.get('value');
 		if (val.length < 2)
 			return;
@@ -167,8 +169,38 @@ window.addEvent('domready', function() {
 			if (num === num) // otherwise, it's NaN
 				return; // don't bother completing w-space systems
 		}
-		dest_ac.empty();
 		send('SYS', val);
+	});
+	function select_direction(dir) {
+		var comps = dest_ac.getElements('div');
+		comps.some(function(d, i) {
+			if (d.hasClass('selected')) {
+				if (comps[i+dir]) {
+					d.removeClass('selected');
+					comps[i+dir].addClass('selected');
+				}
+				return true;
+			}
+		});
+	}
+	dest.addEvent('keydown', function(e) {
+		switch (e.key) {
+		case 'enter':
+			if (dest_ac.getStyle('display') === 'block') {
+				e.preventDefault();
+				dest.set('value', dest_ac.getElement('.selected').get('text'));
+				dest_ac.setStyle('display', 'none');
+			}
+			break;
+		case 'down':
+			e.preventDefault();
+			select_direction(+1);
+			break;
+		case 'up':
+			e.preventDefault();
+			select_direction(-1);
+			break;
+		}
 	});
 
 	function modal(text) {
