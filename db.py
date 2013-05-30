@@ -6,6 +6,7 @@ import oursql
 import os
 
 conn = oursql.connect(db='pyhole', user='pyhole', passwd='pyhole', autoreconnect=True)
+eve_conn = oursql.connect(db='eve', user='eve', passwd='eve', autoreconnect=True)
 
 def query(cursor, sql, *args):
 	cursor.execute(sql, args)

@@ -29,11 +29,25 @@ window.addEvent('domready', function() {
 			stage.setHeight((rows + 1) * rowHeight);
 			stage.add(layer);
 			break;
+		case 'SYS':
+			var systems = JSON.parse(message);
+			if (systems.length > 0) {
+				var val = dest.get('value');
+				// handle race where we receive a message for a different SYS request
+				if (val.toLowerCase() == systems[0].substr(0, val.length).toLowerCase()) {
+					dest_ac.empty();
+					systems.each(function(s) {
+						dest_ac.adopt(new Element('div', {'html': s}));
+					});
+					dest_ac.setStyle('display', 'block');
+				}
+			}
+			break;
 		case 'ERR':
 			modal(message);
 			break;
 		default:
-			console.error('unhandled message', data);
+			console.warn('unhandled message', data);
 		}
 	}
 	ws.onerror = ws.onclose = function(e) {
@@ -112,12 +126,13 @@ window.addEvent('domready', function() {
 	$('delete').addEvent('click', function(e) {
 		send('DELETE', system_name.get('text'));
 		bottom_divs.setStyle('display', 'none');
+		dest_ac.setStyle('display', 'none');
 	});
 	var add_form = $('add');
 	add_form.addEvent('submit', function(e) {
 		e.preventDefault()
 		var o = {};
-		add_form.getChildren('input').each(function(el) {
+		add_form.getElements('input').each(function(el) {
 			if (el.type === 'submit')
 				return;
 			else if (el.type === 'checkbox') {
@@ -140,6 +155,20 @@ window.addEvent('domready', function() {
 			$(id).set('value', '');
 		});
 		$('eol').set('checked', false);
+		dest_ac.setStyle('display', 'none');
+	});
+	var dest = $('dest'), dest_ac = $('dest_ac');
+	dest.addEvent('input', function() {
+		var val = dest.get('value');
+		if (val.length < 2)
+			return;
+		if (val[0].toUpperCase() == 'J') {
+			var num = parseInt(val.substr(1), 10);
+			if (num === num) // otherwise, it's NaN
+				return; // don't bother completing w-space systems
+		}
+		dest_ac.empty();
+		send('SYS', val);
 	});
 
 	function modal(text) {

@@ -55,6 +55,8 @@ class MapWSHandler(tornado.websocket.WebSocketHandler):
 			self.add(split[1])
 		elif split[0] == 'DELETE':
 			self.delete(split[1])
+		elif split[0] == 'SYS':
+			self.autocomplete(split[1])
 		else:
 			print('unhandled message', message)
 
@@ -91,6 +93,15 @@ class MapWSHandler(tornado.websocket.WebSocketHandler):
 			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)
+
+	def autocomplete(self, partial):
+		with db.eve_conn.cursor() as c:
+			r = db.query(c, '''
+					SELECT solarSystemName FROM mapSolarSystems
+					WHERE solarSystemName LIKE ? and security > 0.0
+					''', partial + '%')
+			systems = [row.solarSystemName for row in r]
+		self.write_message('SYS ' + json.dumps(systems))
 
 class CSSHandler(tornado.web.RequestHandler):
 	def get(self, css_path):
