@@ -7,20 +7,19 @@ import os
 
 conn = oursql.connect(db='pyhole', user='pyhole', passwd='pyhole', autoreconnect=True)
 
-def query(sql, *args):
-	with conn.cursor() as c:
-		c.execute(sql, args)
-		while True:
-			r = c.fetchone()
-			if r is None:
-				break
-			attribs = DBRow()
-			for i, f in enumerate(c.description):
-				setattr(attribs, f[0], r[i])
-			yield attribs
+def query(cursor, sql, *args):
+	cursor.execute(sql, args)
+	while True:
+		r = cursor.fetchone()
+		if r is None:
+			break
+		attribs = DBRow()
+		for i, f in enumerate(cursor.description):
+			setattr(attribs, f[0], r[i])
+		yield attribs
 
-def query_one(sql, *args):
-	results = query(sql, *args)
+def query_one(cursor, sql, *args):
+	results = query(cursor, sql, *args)
 	try:
 		r = next(results)
 	except StopIteration:
@@ -32,21 +31,18 @@ def query_one(sql, *args):
 	else:
 		raise RuntimeError('multiple rows for query {}, {}'.format(sql, args))
 
-def execute(sql, *args):
-	with conn.cursor() as c:
-		c.execute(sql, args)
-		return c.lastrowid
-
 def create_user(username, password):
 	salt = os.urandom(16)
 	h = hmac.new(salt, password.encode('utf-8'), hashlib.sha256)
 	hashed = h.hexdigest()
 	salt_hex = binascii.hexlify(salt)
-	execute('INSERT INTO users (username, password, salt) VALUES(?, ?, ?)',
-	        username, hashed, salt_hex)
+	with conn.cursor() as c:
+		c.execute('INSERT INTO users (username, password, salt) VALUES(?, ?, ?)',
+				username, hashed, salt_hex)
 
 def check_login(username, password):
-	r = query_one('SELECT id, password, salt FROM users WHERE username = ?', username)
+	with conn.cursor() as c:
+		r = query_one(c, 'SELECT id, password, salt FROM users WHERE username = ?', username)
 	if r is None:
 		return
 	salt = binascii.unhexlify(bytes(r.salt, 'ascii'))
@@ -58,8 +54,8 @@ class UpdateError(Exception):
 	def __init__(self, message):
 		self.message = message
 
-def update_map(system):
-	def update_node(node):
+def add_system(system):
+	def add_node(node):
 		if node['name'] == system['src']:
 			node.setdefault('connections', [])
 			o = {'name': system['dest']}
@@ -73,16 +69,17 @@ def update_map(system):
 			return True
 		if 'connections' in node:
 			for c in node['connections']:
-				if update_node(c):
+				if add_node(c):
 					return True
 
 	with conn.cursor() as c:
-		c.execute('SELECT json from maps')
-		r = c.fetchone()
-		map_data = json.loads(r[0])
-		if not update_node(map_data):
+		r = query_one(c, 'SELECT json from maps')
+		map_data = json.loads(r.json)
+		if not add_node(map_data):
 			raise UpdateError('src system not found')
-		c.execute('UPDATE maps SET json = ?', (json.dumps(map_data),))
+		map_json = json.dumps(map_data)
+		c.execute('UPDATE maps SET json = ?', (map_json,))
+	return map_json
 
 def delete_system(system_name):
 	def delete_node(node):
@@ -95,14 +92,15 @@ def delete_system(system_name):
 					return True
 
 	with conn.cursor() as c:
-		c.execute('SELECT json from maps')
-		r = c.fetchone()
-		map_data = json.loads(r[0])
+		r = query_one(c, 'SELECT json from maps')
+		map_data = json.loads(r.json)
 		if map_data['name'] == system_name:
 			raise UpdateError('cannot delete root node')
 		if not delete_node(map_data): # this will not delete the root node (even if it passed previous check)
 			raise UpdateError('system not found')
-		c.execute('UPDATE maps SET json = ?', (json.dumps(map_data),))
+		map_json = json.dumps(map_data)
+		c.execute('UPDATE maps SET json = ?', (map_json,))
+	return map_json
 
 class DBRow:
 	def __str__(self):

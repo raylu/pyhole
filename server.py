@@ -58,10 +58,8 @@ class MapWSHandler(tornado.websocket.WebSocketHandler):
 		else:
 			print('unhandled message', message)
 
-	def __send_map(self):
-		r = db.query_one('SELECT json from maps')
-		map_data = r.json
-		self.write_message('MAP ' + map_data)
+	def __send_map(self, map_json):
+		self.write_message('MAP ' + map_json)
 
 	def __send_err(self, e):
 		self.write_message('ERR ' + e.message)
@@ -74,20 +72,23 @@ class MapWSHandler(tornado.websocket.WebSocketHandler):
 			user_id = int(tornado.web.decode_signed_value(config.web.cookie_secret, "user_id", user_id_cookie))
 		except KeyError:
 			return
-		self.__send_map()
+		with db.conn.cursor() as c:
+			r = db.query_one(c, 'SELECT json from maps')
+		map_json = r.json
+		self.__send_map(map_json)
 
 	def add(self, system_json):
-		system = json.loads(system_json)
 		try:
-			db.update_map(system)
-			self.__send_map()
+			system = json.loads(system_json)
+			map_json = db.add_system(system)
+			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)
 
 	def delete(self, system_name):
 		try:
-			db.delete_system(system_name)
-			self.__send_map()
+			map_json = db.delete_system(system_name)
+			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)
 

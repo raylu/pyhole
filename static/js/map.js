@@ -41,6 +41,11 @@ window.addEvent('domready', function() {
 		modal('ruh roh!');
 		ws.close();
 	}
+	function send(command, args) {
+		var message = command + ' ' + args;
+		console.debug(message);
+		ws.send(message);
+	}
 
 	function drawNode(node, x, y) {
 		drawSystem(node, x, y);
@@ -105,9 +110,7 @@ window.addEvent('domready', function() {
 		bottom_divs.setStyle('display', 'block');
 	}
 	$('delete').addEvent('click', function(e) {
-		var sn_str = system_name.get('text');
-		console.debug('DELETE', sn_str);
-		ws.send('DELETE ' + sn_str);
+		send('DELETE', system_name.get('text'));
 		bottom_divs.setStyle('display', 'none');
 	});
 	var add_form = $('add');
@@ -131,8 +134,7 @@ window.addEvent('domready', function() {
 			modal("you didn't specify a system name");
 			return;
 		}
-		console.debug('ADD', o);
-		ws.send('ADD ' + JSON.stringify(o));
+		send('ADD', JSON.stringify(o));
 
 		['dest', 'to', 'from'].each(function(id) {
 			$(id).set('value', '');
