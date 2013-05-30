@@ -1,0 +1,47 @@
+*:
+	box-sizing: border-box
+	-moz-box-sizing: border-box
+	-webkit-box-sizing: border-box
+
+body:
+	margin: 0
+	padding: 0
+	height: 100%
+	background: #000
+	color: #ddd
+	font-family: sans-serif
+
+a:
+	text-decoration: none
+	color: #dde
+
+input:
+	padding: 5px 10px
+	border: 1px solid #cdd
+	background: #222
+	color: #ccc
+
+.clear:
+	clear: both
+
+#modal_bg:
+	display: none
+	z-index: 10
+	position: absolute
+	top: 0
+	bottom: 0
+	left: 0
+	right: 0
+	background-color: rgba(50, 50, 50, 0.8)
+
+	#modal:
+		margin: 200px auto 0
+		width: 500px
+		padding: 25px
+		background-color: #111
+		box-shadow: 0 0 10px 2px rgba(200, 200, 200, 0.25)
+
+#wrapper:
+	width: 900px
+	margin: 50px auto
+	background: #111

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
+import cleancss
 import http.cookies
 import json
-from lesscss import lessc
 import tornado.ioloop
 import tornado.web
 import tornado.websocket
@@ -105,11 +105,10 @@ class MapWSHandler(tornado.websocket.WebSocketHandler):
 
 class CSSHandler(tornado.web.RequestHandler):
 	def get(self, css_path):
-		css_path = os.path.join(os.path.dirname(__file__), 'static', css_path) + '.less'
+		css_path = os.path.join(os.path.dirname(__file__), 'static', css_path) + '.ccss'
 		with open(css_path, 'r') as f:
 			self.set_header('Content-Type', 'text/css')
-			css = lessc.compile(f.read())
-			self.write(css)
+			self.write(cleancss.convert(f))
 
 if __name__ == '__main__':
 	tornado.web.Application(

@@ -1,0 +1,32 @@
+.info, .add:
+	display: none
+	float: left
+	height: 230px
+	width: 450px
+	padding: 25px
+
+.add:
+	label:
+		width: 75px
+		display: inline-block
+		&:first-child:
+			width: auto
+
+	input[type="text"]:
+		width: 100px
+
+.autocomp_wrapper:
+	display: inline-block
+	position: relative
+
+	.autocomp:
+		display: none
+		position: absolute
+		top: 30px
+		left: -1px
+		width: 102px
+		padding: 5px 10px
+		border: 1px solid #aaa
+		border-top: none
+		background-color: #111
+		font-size: 0.8em
