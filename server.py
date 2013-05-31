@@ -35,11 +35,16 @@ class LoginHandler(BaseHandler):
 		username = self.get_argument('username')
 		password = self.get_argument('password')
 		user_id = db.check_login(username, password)
-		success = False
 		if user_id is not None:
 			self.set_secure_cookie('user_id', str(user_id), expires_days=90)
-			success = True
-		self.render('login.html', success=success)
+			self.redirect('/map')
+		else:
+			self.redirect('/')
+
+class LogoutHandler(BaseHandler):
+	def get(self):
+		self.clear_cookie('user_id')
+		self.redirect('/')
 
 class MapHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -115,6 +120,7 @@ if __name__ == '__main__':
 		handlers=[
 			(r'/', MainHandler),
 			(r'/login', LoginHandler),
+			(r'/logout', LogoutHandler),
 			(r'/map', MapHandler),
 			(r'/map.ws', MapWSHandler),
 			(r'/(css/.+)\.css', CSSHandler),
@@ -123,7 +129,7 @@ if __name__ == '__main__':
 		static_path=os.path.join(os.path.dirname(__file__), 'static'),
 		cookie_secret=config.web.cookie_secret,
 		xsrf_cookies=True,
-		login_url='/login',
+		login_url='/',
 		debug=True,
 	).listen(config.web.port)
 	print('Listening on :%d' % config.web.port)
