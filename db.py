@@ -39,7 +39,7 @@ def create_user(username, password):
 	salt_hex = binascii.hexlify(salt)
 	with conn.cursor() as c:
 		c.execute('INSERT INTO users (username, password, salt) VALUES(?, ?, ?)',
-				username, hashed, salt_hex)
+				[username, hashed, salt_hex])
 
 def check_login(username, password):
 	with conn.cursor() as c:
