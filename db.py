@@ -14,9 +14,7 @@ def query(cursor, sql, *args):
 		r = cursor.fetchone()
 		if r is None:
 			break
-		attribs = DBRow()
-		for i, f in enumerate(cursor.description):
-			setattr(attribs, f[0], r[i])
+		attribs = DBRow(r, cursor.description)
 		yield attribs
 
 def query_one(cursor, sql, *args):
@@ -59,21 +57,51 @@ def add_system(system):
 	def add_node(node):
 		if node['name'] == system['src']:
 			node.setdefault('connections', [])
-			o = {'name': system['dest']}
-			if 'to' in system:
-				o['to'] = system['to']
-			if 'from' in system:
-				o['from'] = system['from'],
-			if 'eol' in system:
-				o['eol'] = system['eol']
-			node['connections'].append(o)
+			system['name'] = system['dest']
+			del system['dest']
+			node['connections'].append(system)
 			return True
 		if 'connections' in node:
 			for c in node['connections']:
 				if add_node(c):
 					return True
 
+	wspace_system = False
+	if system['dest'][0] == 'J':
+		try:
+			int(system['dest'][1:])
+			wspace_system = True
+		except ValueError:
+			pass
+	if not wspace_system:
+		with eve_conn.cursor() as c:
+			r = query_one(c, '''
+			SELECT security FROM mapSolarSystems
+			WHERE solarSystemName = ?
+			''', system['dest'])
+			if r is None:
+				pass
+			elif r.security >= 0.5:
+				system['class'] = 'highsec'
+			elif r.security >= 0.0:
+				system['class'] = 'lowsec'
+			else:
+				system['class'] = 'nullsec'
 	with conn.cursor() as c:
+		if wspace_system:
+			r = query_one(c, '''
+			SELECT class, effect, w1.name, w1.dest, w2.name, w2.dest
+			FROM wh_systems
+			JOIN wh_types AS w1 ON static1 = w1.id
+			LEFT JOIN wh_types AS w2 ON static2 = w2.id
+			WHERE wh_systems.name = ?;
+			''', system['dest'])
+			system['class'] = getattr(r, 'class')
+			system['effect'] = r.effect
+			system['static1'] = {'name': r.raw[2], 'dest': r.raw[3]}
+			if r.raw[4] is not None:
+				system['static2'] = {'name': r.raw[4], 'dest': r.raw[5]}
+
 		r = query_one(c, 'SELECT json from maps')
 		map_data = json.loads(r.json)
 		if not add_node(map_data):
@@ -104,5 +132,10 @@ def delete_system(system_name):
 	return map_json
 
 class DBRow:
+	def __init__(self, result, description):
+		for i, f in enumerate(description):
+			setattr(self, f[0], result[i])
+		self.raw = result
+
 	def __str__(self):
 		return '<DBRow>: ' + str(self.__dict__)

@@ -75,27 +75,56 @@ window.addEvent('domready', function() {
 		return new_lines || 1;
 	}
 
+	var class_color = {
+		'home': '#404',
+		'highsec': '#040',
+		'lowsec': '#440',
+		'nullsec': '#400',
+		1: '#135',
+		2: '#124',
+		3: '#122',
+		4: '#114',
+		5: '#113',
+		6: '#112',
+	}
 	function drawSystem(system, x, y) {
 		var ellipse = new Kinetic.Circle({
 			'x': x,
 			'y': y,
-			'radius': ovalWidth / 4, // radius is half the width but half again because scaleX = 2
-			'fill': '#705',
+			'radius': ovalWidth / 2 / 1.75, // radius is half the width, and scaleX = 1.75
+			'fill': class_color[system.class],
 			'stroke': '#ccc',
 			'strokeWidth': 2,
-			'scaleX': 2,
+			'scaleX': 1.75,
 		});
 		layer.add(ellipse);
 		// draw text
 		var text = new Kinetic.Text({
 			'text': system.name,
 			'x': x,
-			'y': y-7,
+			'y': y-16,
 			'fontSize': 14,
 			'fontFamily': 'sans-serif',
 			'fill': '#ccc',
 		});
 		var textWidth = text.getTextWidth();
+		text.setX(x - textWidth / 2);
+		layer.add(text);
+
+		var sys_class;
+		if (system.class && !system.class.length) // not a string, so w-space
+			sys_class = 'C' + system.class;
+		else
+			sys_class = system.class || '';
+		text = new Kinetic.Text({
+			'text': sys_class,
+			'x': x,
+			'y': y+2,
+			'fontSize': 14,
+			'fontFamily': 'sans-serif',
+			'fill': '#ccc',
+		})
+		textWidth = text.getTextWidth();
 		text.setX(x - textWidth / 2);
 		layer.add(text);
 
@@ -118,9 +147,17 @@ window.addEvent('domready', function() {
 	}
 
 	var bottom_divs = $$('.add, .info');
-	var system_name = $('system_name'), src = $('src');
+	var system_name = $('system_name'), effect = $('effect'), statics = $('statics');
+	var src = $('src');
 	function handleClick(system) {
 		system_name.set('text', system.name);
+		effect.set('text', system.effect || 'no effect');
+		var static_str = '';
+		if (system.static1)
+			static_str += system.static1.name + ' to ' + system.static1.dest;
+		if (system.static2)
+			static_str += '<br>' + system.static2.name + ' to ' + system.static2.dest;
+		statics.set('html', static_str);
 		src.set('value', system.name);
 		bottom_divs.setStyle('display', 'block');
 	}
@@ -206,6 +243,7 @@ window.addEvent('domready', function() {
 	function modal(text) {
 		$('modal').empty().appendText(text);
 		var mbg = $('modal_bg').setStyle('display', 'block');
+		mbg.focus();
 		mbg.addEvent('click', function() {
 			mbg.setStyle('display', 'none');
 			mbg.removeEvents('click');
