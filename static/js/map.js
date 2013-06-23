@@ -166,18 +166,38 @@ window.addEvent('domready', function() {
 		layer.add(line);
 	}
 
+	function is_wspace(system_name) {
+		if (system_name[0].toUpperCase() == 'J') {
+			var num = parseInt(system_name.substr(1), 10);
+			return (num === num); // otherwise, it's NaN
+		}
+		return false;
+	}
+
 	var bottom_divs = $$('.add, .info');
 	var system_name = $('system_name'), effect = $('effect'), statics = $('statics'), connections = $('connections');
 	var src = $('src');
 	function handleClick(system) {
-		system_name.set('text', system.name);
+		if (is_wspace(system.name))
+			var url = 'http://wormhol.es/' + system.name;
+		else
+			var url = 'http://eveeye.com/?system=' + system.name;
+		system_name.empty();
+		system_name.grab(new Element('a', {
+			'html': system.name,
+			'href': url,
+			'target': '_blank',
+		}));
+
 		effect.set('text', system.effect || 'no effect');
+
 		var static_str = '';
 		if (system.static1)
 			static_str += system.static1.name + ' to ' + system.static1.dest;
 		if (system.static2)
 			static_str += '<br>' + system.static2.name + ' to ' + system.static2.dest;
 		statics.set('html', static_str);
+
 		connections.empty();
 		if (system.connections) {
 			var conns = system.connections.each(function(conn) {
@@ -190,7 +210,9 @@ window.addEvent('domready', function() {
 				connections.adopt(toggle, new Element('br'));
 			});
 		}
+
 		src.set('value', system.name);
+
 		bottom_divs.setStyle('display', 'block');
 	}
 	$('delete').addEvent('click', function(e) {
@@ -232,11 +254,8 @@ window.addEvent('domready', function() {
 		var val = dest.get('value');
 		if (val.length < 2)
 			return;
-		if (val[0].toUpperCase() == 'J') {
-			var num = parseInt(val.substr(1), 10);
-			if (num === num) // otherwise, it's NaN
-				return; // don't bother completing w-space systems
-		}
+		if (is_wspace(val))
+			return;
 		send('SYS', val);
 	});
 	function select_direction(dir) {
