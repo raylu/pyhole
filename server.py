@@ -38,6 +38,7 @@ class LoginHandler(BaseHandler):
 		user_id = db.check_login(username, password)
 		if user_id is not None:
 			self.set_secure_cookie('user_id', str(user_id), expires_days=90)
+			self.set_secure_cookie('username', username, expires_days=90)
 			self.redirect('/map')
 		else:
 			self.redirect('/')
@@ -52,6 +53,20 @@ class MapHandler(BaseHandler):
 	def get(self):
 		igb = self.request.headers['User-Agent'].endswith('EVE-IGB')
 		self.render('map.html', igb=igb)
+
+class AccountHandler(BaseHandler):
+	@tornado.web.authenticated
+	def get(self):
+		username = self.get_secure_cookie('username')
+		self.render('account.html', username=username)
+
+class PasswordHandler(BaseHandler):
+	@tornado.web.authenticated
+	def post(self):
+		user_id = self.get_current_user()
+		password = self.get_argument('password')
+		db.change_password(user_id, password)
+		self.redirect('/account')
 
 class DataHandler:
 	def __send_map(self, map_json):
@@ -157,6 +172,8 @@ if __name__ == '__main__':
 			(r'/map', MapHandler),
 			(r'/map.ws', MapWSHandler),
 			(r'/map.json/(.+)', MapAJAXHandler),
+			(r'/account', AccountHandler),
+			(r'/password', PasswordHandler),
 			(r'/(css/.+)\.css', CSSHandler),
 		],
 		template_path=os.path.join(os.path.dirname(__file__), 'templates'),

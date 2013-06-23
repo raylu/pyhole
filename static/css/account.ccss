@@ -1,0 +1,10 @@
+#account:
+	padding: 25px
+
+	form:
+		label:
+			display: inline-block
+			width: 120px
+
+		input[type="submit"]:
+			margin-left: 122px

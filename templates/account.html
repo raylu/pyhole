@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/css/account.css" />
+{% end %}
+
+{% block main %}
+
+<div id="account">
+<form method="post" action="/password">
+	<label for="username">username</label>
+	<input type="text" disabled="disabled" id="username" value="{{ username }}">
+	<br>
+	<label for="password">new password</label>
+	<input type="text" name="password" id="password">
+	<br>
+	<input type="submit">
+	{% module xsrf_form_html() %}
+</form>
+</div>
+
+{% end %}

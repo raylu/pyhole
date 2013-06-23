@@ -30,11 +30,15 @@ def query_one(cursor, sql, *args):
 	else:
 		raise RuntimeError('multiple rows for query {}, {}'.format(sql, args))
 
-def create_user(username, password):
+def __gen_hash(password):
 	salt = os.urandom(16)
 	h = hmac.new(salt, password.encode('utf-8'), hashlib.sha256)
 	hashed = h.hexdigest()
 	salt_hex = binascii.hexlify(salt)
+	return hashed, salt_hex
+
+def create_user(username, password):
+	hashed, salt_hex = __gen_hash(password)
 	with conn.cursor() as c:
 		c.execute('INSERT INTO users (username, password, salt) VALUES(?, ?, ?)',
 				[username, hashed, salt_hex])
@@ -48,6 +52,14 @@ def check_login(username, password):
 	h = hmac.new(salt, password.encode('utf-8'), hashlib.sha256)
 	if h.hexdigest() == r.password:
 		return r.id
+
+def change_password(user_id, password):
+	hashed, salt_hex = __gen_hash(password)
+	with conn.cursor() as c:
+		c.execute('UPDATE users SET password = ?, salt = ? WHERE id = ?',
+				[hashed, salt_hex, user_id])
+		if c.rowcount != 1:
+			raise RuntimeError('expected to update 1 row, affected {}'.format(c.rowcount))
 
 class UpdateError(Exception):
 	def __init__(self, message):
