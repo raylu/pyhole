@@ -147,7 +147,7 @@ window.addEvent('domready', function() {
 	}
 
 	var bottom_divs = $$('.add, .info');
-	var system_name = $('system_name'), effect = $('effect'), statics = $('statics');
+	var system_name = $('system_name'), effect = $('effect'), statics = $('statics'), connections = $('connections');
 	var src = $('src');
 	function handleClick(system) {
 		system_name.set('text', system.name);
@@ -158,6 +158,18 @@ window.addEvent('domready', function() {
 		if (system.static2)
 			static_str += '<br>' + system.static2.name + ' to ' + system.static2.dest;
 		statics.set('html', static_str);
+		connections.empty();
+		if (system.connections) {
+			var conns = system.connections.each(function(conn) {
+				var toggle = new Element('a', {'html': '(toggle EoL)', 'href': ''});
+				toggle.addEvent('click', function(e) {
+					e.preventDefault();
+					send('EOL', system.name + ' ' + conn.name);
+				});
+				connections.appendText(conn.name + ' ');
+				connections.adopt(toggle, new Element('br'));
+			});
+		}
 		src.set('value', system.name);
 		bottom_divs.setStyle('display', 'block');
 	}
@@ -175,8 +187,7 @@ window.addEvent('domready', function() {
 				return;
 			else if (el.type === 'checkbox') {
 				var checked = el.get('checked');
-				if (checked)
-					o[el.get('id')] = checked;
+				o[el.get('id')] = checked;
 			} else if (el.type === 'text') {
 				var val = el.get('value');
 				if (val.length > 0)

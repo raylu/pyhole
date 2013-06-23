@@ -13,7 +13,9 @@ body:
 
 a:
 	text-decoration: none
-	color: #dde
+	color: #1ac
+	&:hover:
+		color: #5ce
 
 input:
 	padding: 5px 10px

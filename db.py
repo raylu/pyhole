@@ -131,6 +131,25 @@ def delete_system(system_name):
 		c.execute('UPDATE maps SET json = ?', (map_json,))
 	return map_json
 
+def toggle_eol(src, dest):
+	def toggle_node(node):
+		if 'connections' in node:
+			for i, c in enumerate(node['connections']):
+				if node['name'] == src and c['name'] == dest:
+					c['eol'] = not c['eol']
+					return True
+				if toggle_node(c):
+					return True
+
+	with conn.cursor() as c:
+		r = query_one(c, 'SELECT json from maps')
+		map_data = json.loads(r.json)
+		if not toggle_node(map_data):
+			raise UpdateError('system not found')
+		map_json = json.dumps(map_data)
+		c.execute('UPDATE maps SET json = ?', (map_json,))
+	return map_json
+
 class DBRow:
 	def __init__(self, result, description):
 		for i, f in enumerate(description):

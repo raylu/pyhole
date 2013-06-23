@@ -60,6 +60,8 @@ class MapWSHandler(tornado.websocket.WebSocketHandler):
 			self.add(split[1])
 		elif split[0] == 'DELETE':
 			self.delete(split[1])
+		elif split[0] == 'EOL':
+			self.toggle_eol(split[1])
 		elif split[0] == 'SYS':
 			self.autocomplete(split[1])
 		else:
@@ -95,6 +97,14 @@ class MapWSHandler(tornado.websocket.WebSocketHandler):
 	def delete(self, system_name):
 		try:
 			map_json = db.delete_system(system_name)
+			self.__send_map(map_json)
+		except db.UpdateError as e:
+			self.__send_err(e)
+
+	def toggle_eol(self, system_names):
+		try:
+			src, dest = system_names.split()
+			map_json = db.toggle_eol(src, dest)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)
