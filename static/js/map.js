@@ -9,13 +9,43 @@ window.addEvent('domready', function() {
 	var rowHeight = 75;
 	var ovalWidth = 100;
 
-	var ws = new WebSocket(window.config.wsurl);
-	ws.onopen = function(e) {
-		console.debug('connected to', e.target.url);
-		ws.send('HELO ' + document.cookie);
-	};
-	ws.onmessage = function (e) {
-		var data = e.data;
+	var send = null;
+	if (window.WebSocket) {
+		var ws = new WebSocket(window.config.wsurl);
+		ws.onopen = function(e) {
+			console.debug('connected to', e.target.url);
+			ws.send('HELO ' + document.cookie);
+		};
+		ws.onmessage = function (e) {
+			parseData(e.data);
+		}
+		ws.onerror = ws.onclose = function(e) {
+			console.error('ws closed', e);
+			modal('ruh roh!');
+			ws.close();
+		}
+
+		send = function(command, args) {
+			var message = command + ' ' + args;
+			console.debug(message);
+			ws.send(message);
+		}
+	} else {
+		send = function(command, args) {
+			console.debug(command, args);
+			new Request.JSON({
+				url: '/map.json/' + command,
+				onSuccess: parseData,
+				onFailure: function(xhr) {
+					console.error('xhr failed', xhr);
+					modal('ruh roh: ' + xhr.responseText);
+				},
+			}).get({'args': args});
+		}
+		send('HELO');
+	}
+
+	function parseData(data) {
 		var space = data.indexOf(' ');
 		var command = data.substr(0, space);
 		var message = data.substr(space + 1);
@@ -50,16 +80,6 @@ window.addEvent('domready', function() {
 		default:
 			console.warn('unhandled message', data);
 		}
-	}
-	ws.onerror = ws.onclose = function(e) {
-		console.error('ws closed', e);
-		modal('ruh roh!');
-		ws.close();
-	}
-	function send(command, args) {
-		var message = command + ' ' + args;
-		console.debug(message);
-		ws.send(message);
 	}
 
 	function drawNode(node, x, y) {

@@ -45,3 +45,9 @@
 			&.selected:
 				background: #444
 				color: #ddd
+
+.igb:
+	padding: 15px
+	margin: 15px 0
+	text-align: center
+	font-size: 14px
