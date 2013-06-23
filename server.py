@@ -75,13 +75,7 @@ class DataHandler:
 	def __send_err(self, e):
 		self.write_message('ERR ' + e.message)
 
-	def helo(self, cookies):
-		# check that the user has a valid user_id
-		try:
-			user_id_cookie = cookies['user_id'].value
-			user_id = int(tornado.web.decode_signed_value(config.web.cookie_secret, 'user_id', user_id_cookie))
-		except KeyError:
-			return
+	def helo(self):
 		with db.conn.cursor() as c:
 			r = db.query_one(c, 'SELECT json from maps')
 		map_json = r.json
@@ -120,11 +114,20 @@ class DataHandler:
 		self.write_message('SYS ' + json.dumps(systems))
 
 class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
+	def __init__(self, *args, **kwargs):
+		super(MapWSHandler, self).__init__(*args, **kwargs)
+		self.authenticated = False
+
 	def on_message(self, message):
 		split = message.split(' ', 1)
+		if not self.authenticated and split[0] != 'HELO':
+			return
 		if split[0] == 'HELO':
 			cookies = http.cookies.SimpleCookie(split[1])
-			self.helo(cookies)
+			user_id_cookie = cookies['user_id'].value
+			user_id = int(tornado.web.decode_signed_value(config.web.cookie_secret, 'user_id', user_id_cookie))
+			self.authenticated = True
+			self.helo()
 		elif split[0] == 'ADD':
 			self.add(split[1])
 		elif split[0] == 'DELETE':
@@ -138,9 +141,10 @@ class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 
 class MapAJAXHandler(DataHandler, tornado.web.RequestHandler):
 	def get(self, command):
+		int(self.get_secure_cookie('user_id')) # auth check
 		args = self.get_argument('args', None)
 		if command == 'HELO':
-			self.helo(self.cookies)
+			self.helo()
 		elif command == 'ADD':
 			self.add(args)
 		elif command == 'DELETE':
