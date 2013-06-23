@@ -15,6 +15,7 @@ import db
 class BaseHandler(tornado.web.RequestHandler):
 	def render(self, *args, **kwargs):
 		kwargs['host'] = config.web.host
+		kwargs['path'] = self.request.uri
 		return super(BaseHandler, self).render(*args, **kwargs)
 
 	def render_string(self, *args, **kwargs):

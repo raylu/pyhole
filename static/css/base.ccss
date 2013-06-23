@@ -47,3 +47,18 @@ input:
 	width: 900px
 	margin: 50px auto
 	background: #111
+
+	#nav:
+		background: #000
+
+		a:
+			display: inline-block
+			width: 222px // (900 + margin * 2) / num_links - margin * 2 == (900 + 4) / 4 - 4
+			text-align: center
+			padding: 5px
+			margin: 0 2px 4px
+			background: #111
+			&:first-child:
+				margin-left: 0
+			&:last-child:
+				margin-right: 0

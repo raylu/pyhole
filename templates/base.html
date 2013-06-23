@@ -3,6 +3,11 @@
 <head>
 	<title>pyhole</title>
 	<link rel="stylesheet" type="text/css" href="/css/base.css" />
+	<style>
+		#wrapper #nav a[href="{{ path }}"] {
+			background: #222;
+		}
+	</style>
 	<script src="//ajax.googleapis.com/ajax/libs/mootools/1.4.5/mootools.js"></script>
 	{% block js %}{% end %}
 	{% block css %}{% end %}
@@ -12,10 +17,11 @@
 		<div id="modal"></div>
 	</div>
 	<div id="wrapper">
-		<div id="topbar">
-			<div id="title"></div>
-			<div id="nav">
-			</div>
+		<div id="nav">
+			<a href="/">home</a>
+			<a href="/map">map</a>
+			<a href="/account">account</a>
+			<a href="/logout">logout</a>
 		</div>
 
 		{% block main %}{% end %}
