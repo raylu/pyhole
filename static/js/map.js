@@ -209,6 +209,25 @@ window.addEvent('domready', function() {
 				connections.appendText(conn.name + ' ');
 				connections.adopt(toggle, new Element('br'));
 			});
+		} else {
+			Object.each(system.jumps, function(route, trade_hub) {
+				connections.grab(new Element('div', {
+					'text': trade_hub + ' (' + route.length + '):',
+					'class': 'trade_hub',
+				}));
+				Object.each(route, function(j) {
+					var sec;
+					if (j[1] >= 0.5)
+						sec = 'highsec';
+					else if (j[1] > 0.0)
+						sec = 'lowsec';
+					else
+						sec = 'nullsec';
+					var j = new Element('div', {'class': 'jump ' + sec, 'title': j[0]});
+					connections.grab(j);
+				});
+				connections.grab(new Element('br'));
+			});
 		}
 
 		src.set('value', system.name);

@@ -1,9 +1,11 @@
 import binascii
 import hashlib
 import hmac
+import io
 import json
 import oursql
 import os
+import tornado.httpclient
 
 conn = oursql.connect(db='pyhole', user='pyhole', passwd='pyhole', autoreconnect=True)
 eve_conn = oursql.connect(db='eve', user='eve', passwd='eve', autoreconnect=True)
@@ -88,7 +90,7 @@ def add_system(system):
 	if not wspace_system:
 		with eve_conn.cursor() as c:
 			r = query_one(c, '''
-			SELECT security FROM mapSolarSystems
+			SELECT solarSystemID, security FROM mapSolarSystems
 			WHERE solarSystemName = ?
 			''', system['dest'])
 			if r is None:
@@ -99,6 +101,23 @@ def add_system(system):
 				system['class'] = 'lowsec'
 			else:
 				system['class'] = 'nullsec'
+			client = tornado.httpclient.HTTPClient()
+			ec_api = 'http://api.eve-central.com/api/route/from/{}/to/{}'
+			jumps = {
+				'Jita': 30000142,
+				'Amarr': 30002187,
+				'Dodixie': 30002659,
+				'Rens': 30002510,
+				'Hek': 30002053,
+			}
+			for trade_hub in jumps.keys():
+				system_id = jumps[trade_hub]
+				response = client.fetch(ec_api.format(r.solarSystemID, system_id))
+				route = json.load(io.TextIOWrapper(response.buffer, 'utf-8'))
+				route = map(lambda j: (j['to']['name'], j['to']['security']), route)
+				jumps[trade_hub] = list(route)
+			client.close()
+			system['jumps'] = jumps
 	with conn.cursor() as c:
 		if wspace_system:
 			r = query_one(c, '''

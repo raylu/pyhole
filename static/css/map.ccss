@@ -15,6 +15,22 @@
 			font-size: 12px
 			opacity: 0.8
 
+		div.trade_hub:
+			display: inline-block
+			width: 95px
+
+		div.jump:
+			display: inline-block
+			width: 10px
+			height: 10px
+			margin-left: 1px
+			&.highsec:
+				background-color: #040
+			&.lowsec:
+				background-color: #440
+			&.nullsec:
+				background-color: #400
+
 .add:
 	label:
 		width: 75px
