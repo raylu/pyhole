@@ -15,6 +15,9 @@
 			font-size: 12px
 			opacity: 0.8
 
+	#trade_hubs:
+		margin-top: 10px
+
 		div.trade_hub:
 			display: inline-block
 			width: 95px

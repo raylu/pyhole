@@ -175,7 +175,11 @@ window.addEvent('domready', function() {
 	}
 
 	var bottom_divs = $$('.add, .info');
-	var system_name = $('system_name'), effect = $('effect'), statics = $('statics'), connections = $('connections');
+	var system_name = $('system_name');
+	var effect = $('effect');
+	var statics = $('statics');
+	var connections = $('connections');
+	var trade_hubs = $('trade_hubs');
 	var src = $('src');
 	function handleClick(system) {
 		if (is_wspace(system.name))
@@ -209,9 +213,11 @@ window.addEvent('domready', function() {
 				connections.appendText(conn.name + ' ');
 				connections.adopt(toggle, new Element('br'));
 			});
-		} else {
+		}
+		trade_hubs.empty();
+		if (system.jumps) {
 			Object.each(system.jumps, function(route, trade_hub) {
-				connections.grab(new Element('div', {
+				trade_hubs.grab(new Element('div', {
 					'text': trade_hub + ' (' + route.length + '):',
 					'class': 'trade_hub',
 				}));
@@ -224,9 +230,9 @@ window.addEvent('domready', function() {
 					else
 						sec = 'nullsec';
 					var j = new Element('div', {'class': 'jump ' + sec, 'title': j[0]});
-					connections.grab(j);
+					trade_hubs.grab(j);
 				});
-				connections.grab(new Element('br'));
+				trade_hubs.grab(new Element('br'));
 			});
 		}
 
