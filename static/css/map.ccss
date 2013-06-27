@@ -1,8 +1,8 @@
 .info, .add:
 	display: none
-	float: left
-	height: 230px
+	height: 335px
 	width: 450px
+	vertical-align: top
 	padding: 25px
 
 .info:

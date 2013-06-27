@@ -232,7 +232,7 @@ window.addEvent('domready', function() {
 
 		src.set('value', system.name);
 
-		bottom_divs.setStyle('display', 'block');
+		bottom_divs.setStyle('display', 'inline-block');
 	}
 	$('delete').addEvent('click', function(e) {
 		send('DELETE', system_name.get('text'));
