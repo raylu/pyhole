@@ -119,7 +119,7 @@ window.addEvent('domready', function() {
 		});
 		layer.add(ellipse);
 		// draw text
-		var text = new Kinetic.Text({
+		var sysNameText = new Kinetic.Text({
 			'text': system.name,
 			'x': x,
 			'y': y-16,
@@ -127,16 +127,17 @@ window.addEvent('domready', function() {
 			'fontFamily': 'sans-serif',
 			'fill': '#ccc',
 		});
-		var textWidth = text.getTextWidth();
-		text.setX(x - textWidth / 2);
-		layer.add(text);
+		var textWidth = sysNameText.getTextWidth();
+		sysNameText.setX(x - textWidth / 2);
+		layer.add(sysNameText);
+
 
 		var sys_class;
 		if (system.class && !system.class.length) // not a string, so w-space
 			sys_class = 'C' + system.class;
 		else
 			sys_class = system.class || '';
-		text = new Kinetic.Text({
+		var sysClassText = new Kinetic.Text({
 			'text': sys_class,
 			'x': x,
 			'y': y+2,
@@ -144,14 +145,15 @@ window.addEvent('domready', function() {
 			'fontFamily': 'sans-serif',
 			'fill': '#ccc',
 		})
-		textWidth = text.getTextWidth();
-		text.setX(x - textWidth / 2);
-		layer.add(text);
+		textWidth = sysClassText.getTextWidth();
+		sysClassText.setX(x - textWidth / 2);
+		layer.add(sysClassText);
 
 		function _handleClick(e) {
 			handleClick(system);
 		}
-		text.on('click', _handleClick);
+		sysNameText.on('click', _handleClick);
+		sysClassText.on('click', _handleClick);
 		ellipse.on('click', _handleClick);
 	}
 	function drawLink(x1, y1, x2, y2, eol) {
