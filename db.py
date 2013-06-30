@@ -98,7 +98,7 @@ def add_system(system):
 			security = round(r.security, 1)
 			if security >= 0.5:
 				system['class'] = 'highsec'
-			elif security >= 0.0:
+			elif security > 0.0:
 				system['class'] = 'lowsec'
 			else:
 				system['class'] = 'nullsec'
