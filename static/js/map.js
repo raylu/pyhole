@@ -275,6 +275,7 @@ window.addEvent('domready', function() {
 		$('eol').set('checked', false);
 		dest_ac.setStyle('display', 'none');
 	});
+
 	var dest = $('dest'), dest_ac = $('dest_ac');
 	dest.addEvent('input', function() {
 		dest_ac.setStyle('display', 'none');
@@ -285,6 +286,11 @@ window.addEvent('domready', function() {
 			return;
 		send('SYS', val);
 	});
+	// hides the auto complete div when loses focus
+	dest.addEvent('blur', function() {
+		dest_ac.setStyle('display', 'none');
+	});
+
 	function select_direction(dir) {
 		var comps = dest_ac.getElements('div');
 		comps.some(function(d, i) {
