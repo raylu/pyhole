@@ -58,7 +58,15 @@ class AccountHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		username = self.get_secure_cookie('username')
-		self.render('account.html', username=username)
+		users = None
+		with db.conn.cursor() as c:
+			user_id = self.get_secure_cookie('user_id')
+			r = db.query_one(c, 'SELECT admin FROM users WHERE id = ?', user_id)
+			admin = bool(r.admin)
+			if admin:
+				users = db.query(c, 'SELECT username, admin FROM users')
+				users = list(users)
+		self.render('account.html', username=username, admin=admin, users=users)
 
 class PasswordHandler(BaseHandler):
 	@tornado.web.authenticated
@@ -66,6 +74,22 @@ class PasswordHandler(BaseHandler):
 		user_id = self.get_current_user()
 		password = self.get_argument('password')
 		db.change_password(user_id, password)
+		self.redirect('/account')
+
+class CreateUserHandler(BaseHandler):
+	@tornado.web.authenticated
+	def post(self):
+		with db.conn.cursor() as c:
+			user_id = self.get_secure_cookie('user_id')
+			r = db.query_one(c, 'SELECT admin FROM users WHERE id = ?', user_id)
+			admin = bool(r.admin)
+			if not admin:
+				raise tornado.web.HTTPError(403)
+		username = self.get_argument('username')
+		password = self.get_argument('password')
+		if not username or not password:
+			raise tornado.web.HTTPError(400)
+		db.create_user(username, password)
 		self.redirect('/account')
 
 class DataHandler:
@@ -178,6 +202,7 @@ if __name__ == '__main__':
 			(r'/map.json/(.+)', MapAJAXHandler),
 			(r'/account', AccountHandler),
 			(r'/password', PasswordHandler),
+			(r'/create_user', CreateUserHandler),
 			(r'/(css/.+)\.css', CSSHandler),
 		],
 		template_path=os.path.join(os.path.dirname(__file__), 'templates'),

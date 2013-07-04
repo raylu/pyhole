@@ -8,3 +8,10 @@
 
 		input[type="submit"]:
 			margin-left: 122px
+
+table#users:
+	margin-top: 25px
+	padding: 0 25px
+
+#create_user:
+	padding: 0 25px 25px

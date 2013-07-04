@@ -42,7 +42,7 @@ def __gen_hash(password):
 def create_user(username, password):
 	hashed, salt_hex = __gen_hash(password)
 	with conn.cursor() as c:
-		c.execute('INSERT INTO users (username, password, salt) VALUES(?, ?, ?)',
+		c.execute('INSERT INTO users (username, password, salt, admin) VALUES(?, ?, ?, 0)',
 				[username, hashed, salt_hex])
 
 def check_login(username, password):
