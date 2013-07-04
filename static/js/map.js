@@ -51,12 +51,16 @@ window.addEvent('domready', function() {
 		var message = data.substr(space + 1);
 		switch(command) {
 		case 'MAP':
-			var map = JSON.parse(message);
+			var maps = JSON.parse(message);
 			if (layer !== null)
 				layer.destroy();
 			layer = new Kinetic.Layer();
-			var rows = drawNode(map, 100, 75);
-			stage.setHeight((rows + 1) * rowHeight);
+			var y = 75;
+			maps.each(function(map) {
+				var rows = drawNode(map, 100, y);
+				y += rows * rowHeight;
+			});
+			stage.setHeight(y);
 			stage.add(layer);
 			break;
 		case 'SYS':

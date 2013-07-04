@@ -102,8 +102,7 @@ class DataHandler:
 	def helo(self):
 		with db.conn.cursor() as c:
 			r = db.query_one(c, 'SELECT json from maps')
-		map_json = r.json
-		self.__send_map(map_json)
+		self.__send_map(r.json)
 
 	def add(self, system_json):
 		try:

@@ -136,7 +136,7 @@ def add_system(system):
 
 		r = query_one(c, 'SELECT json from maps')
 		map_data = json.loads(r.json)
-		if not add_node(map_data):
+		if not any(map(add_node, map_data)):
 			raise UpdateError('src system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
@@ -155,9 +155,10 @@ def delete_system(system_name):
 	with conn.cursor() as c:
 		r = query_one(c, 'SELECT json from maps')
 		map_data = json.loads(r.json)
-		if map_data['name'] == system_name:
-			raise UpdateError('cannot delete root node')
-		if not delete_node(map_data): # this will not delete the root node (even if it passed previous check)
+		for root_node in map_data:
+			if root_node['name'] == system_name:
+				raise UpdateError('cannot delete root node')
+		if not any(map(delete_node, map_data)): # this will not delete root nodes (even if it passed previous check)
 			raise UpdateError('system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
@@ -176,7 +177,7 @@ def toggle_eol(src, dest):
 	with conn.cursor() as c:
 		r = query_one(c, 'SELECT json from maps')
 		map_data = json.loads(r.json)
-		if not toggle_node(map_data):
+		if not any(map(toggle_node, map_data)):
 			raise UpdateError('system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
