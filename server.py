@@ -143,7 +143,7 @@ class DataHandler:
 	def signatures(self, text):
 		lines = text.split('\n')
 		system_name = lines[0]
-		sigs = []
+		sigs = {}
 		for l in lines[1:]:
 			if len(l) == 0:
 				break
@@ -153,7 +153,8 @@ class DataHandler:
 			if not fields[1].startswith('Cosmic '):
 				break
 			fields[1] = fields[1][7:]
-			sigs.append(fields[:5])
+			fields[4] = float(fields[4][:-1]) # '100.0%' -> 100.0
+			sigs[fields[0]] = fields[:5]
 		if len(sigs):
 			map_json = db.add_signatures(system_name, sigs)
 			self.__send_map(map_json)

@@ -1,6 +1,5 @@
 .info, .add:
 	display: none
-	height: 335px
 	width: 450px
 	vertical-align: top
 	padding: 25px
@@ -34,9 +33,27 @@
 			&.nullsec:
 				background-color: #400
 
-	#signatures:
+	table#signatures:
 		margin-top: 10px
 		font-size: 12px
+		border-collapse: collapse
+
+		tr:
+			td:
+				padding: 2px 4px
+				max-width: 200px
+				border-style: solid
+				border-width: 1px 0 0 1px
+				border-color: #333
+				white-space: nowrap
+				text-overflow: ellipsis
+				overflow: hidden
+				&:last-child:
+					border-width: 1px
+			&:last-child td:
+				border-width: 1px
+			&:nth-child(even):
+				background-color: #222
 
 .add:
 	label:

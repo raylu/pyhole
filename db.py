@@ -183,10 +183,19 @@ def toggle_eol(src, dest):
 		c.execute('UPDATE maps SET json = ?', (map_json,))
 	return map_json
 
-def add_signatures(system_name, sigs):
+def add_signatures(system_name, new_sigs):
 	def add_sigs_node(node):
 		if node['name'] == system_name:
-			#node.setdefault('signatures', [])
+			sigs = node.get('signatures', [])
+			for sig in sigs:
+				sig_id = sig[0]
+				if sig_id in new_sigs:
+					new_sig = new_sigs[sig_id]
+					if new_sig[4] >= sig[4]: # compare signal strength
+						for i in range(1, len(new_sig)):
+							sig[i] = new_sig[i]
+					del new_sigs[sig_id]
+			sigs.extend(new_sigs.values())
 			node['signatures'] = sigs
 			return True
 		if 'connections' in node:

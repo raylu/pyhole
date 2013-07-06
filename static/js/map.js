@@ -96,6 +96,9 @@ window.addEvent('domready', function() {
 				new_lines += drawNode(child, x + 150, y + new_lines * rowHeight);
 			}
 		}
+		if (current_system && node.name == current_system.name) {
+			handleClick(node);
+		}
 		return new_lines || 1;
 	}
 
