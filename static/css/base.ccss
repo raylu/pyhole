@@ -17,7 +17,7 @@ a:
 	&:hover:
 		color: #5ce
 
-input:
+input, textarea:
 	padding: 5px 10px
 	border: 1px solid #cdd
 	background: #222

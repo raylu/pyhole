@@ -186,7 +186,9 @@ window.addEvent('domready', function() {
 	var statics = $('statics');
 	var connections = $('connections');
 	var trade_hubs = $('trade_hubs');
+	var signatures = $('signatures');
 	var src = $('src');
+	var current_system = null;
 	function handleClick(system) {
 		if (is_wspace(system.name))
 			var url = 'http://wormhol.es/' + system.name;
@@ -245,18 +247,48 @@ window.addEvent('domready', function() {
 			});
 		}
 
+		signatures.empty();
+		if (system.signatures) {
+			system.signatures.each(function(sig) {
+				var row = new Element('tr');
+				for (var i = 0; i < 4; i++)
+					row.grab(new Element('td', {'text': sig[i]}));
+				var del_sig = new Element('a', {'href': '', 'html': '&#x2715;'});
+				row.grab(new Element('td').grab(del_sig));
+				del_sig.addEvent('click', function(e) {
+					e.preventDefault();
+					send('DELSIG', system.name + ' ' + sig[0]);
+				});
+				signatures.grab(row);
+			});
+		}
+
 		src.set('value', system.name);
 
 		bottom_divs.setStyle('display', 'inline-block');
+		current_system = system;
 	}
 	$('delete').addEvent('click', function(e) {
 		send('DELETE', system_name.get('text'));
 		bottom_divs.setStyle('display', 'none');
 		dest_ac.setStyle('display', 'none');
 	});
+	$('paste_sigs').addEvent('click', function(e) {
+		var ps_div = new Element('div', {'class': 'paste_sigs'});
+		var textarea = new Element('textarea', {'class': 'paste_sigs'});
+		var button = new Element('input', {'type': 'button', 'value': 'add'});
+		ps_div.adopt(textarea, button);
+		button.addEvent('click', function(e) {
+			send('SIGS', current_system.name + '\n' + textarea.get('value'));
+			$('modal_bg').fireEvent('click');
+		});
+		modal(ps_div);
+		textarea.focus();
+	});
+
 	var add_form = $('add');
 	add_form.addEvent('submit', function(e) {
-		e.preventDefault()
+		e.preventDefault();
 		var o = {};
 		add_form.getElements('input').each(function(el) {
 			if (el.type === 'submit')
@@ -293,7 +325,6 @@ window.addEvent('domready', function() {
 			return;
 		send('SYS', val);
 	});
-	// hides the auto complete div when loses focus
 	dest.addEvent('blur', function() {
 		dest_ac.setStyle('display', 'none');
 	});
@@ -330,11 +361,19 @@ window.addEvent('domready', function() {
 		}
 	});
 
-	function modal(text) {
-		$('modal').empty().appendText(text);
+	function modal(el) {
+		var modal_div = $('modal');
+		modal_div.empty();
+		if (el instanceof Element)
+			modal_div.grab(el);
+		else
+			modal_div.appendText(el);
 		var mbg = $('modal_bg').setStyle('display', 'block');
 		mbg.focus();
-		mbg.addEvent('click', function() {
+		modal_div.addEvent('click', function(e) {
+			e.stopPropagation();
+		});
+		mbg.addEvent('click', function(e) {
 			mbg.setStyle('display', 'none');
 			mbg.removeEvents('click');
 		});

@@ -183,6 +183,52 @@ def toggle_eol(src, dest):
 		c.execute('UPDATE maps SET json = ?', (map_json,))
 	return map_json
 
+def add_signatures(system_name, sigs):
+	def add_sigs_node(node):
+		if node['name'] == system_name:
+			#node.setdefault('signatures', [])
+			node['signatures'] = sigs
+			return True
+		if 'connections' in node:
+			for c in node['connections']:
+				if add_sigs_node(c):
+					return True
+
+	with conn.cursor() as c:
+		r = query_one(c, 'SELECT json from maps')
+		map_data = json.loads(r.json)
+		if not any(map(add_sigs_node, map_data)):
+			raise UpdateError('system not found')
+		map_json = json.dumps(map_data)
+		c.execute('UPDATE maps SET json = ?', (map_json,))
+	return map_json
+
+def delete_signature(system_name, sig_id):
+	def del_sig_node(node):
+		if node['name'] == system_name:
+			index = None
+			for i, sig in enumerate(node['signatures']):
+				if sig[0] == sig_id:
+					index = i
+					break
+			if index is None:
+				raise UpdateError('sig id not found')
+			node['signatures'].pop(index)
+			return True
+		if 'connections' in node:
+			for c in node['connections']:
+				if del_sig_node(c):
+					return True
+
+	with conn.cursor() as c:
+		r = query_one(c, 'SELECT json from maps')
+		map_data = json.loads(r.json)
+		if not any(map(del_sig_node, map_data)):
+			raise UpdateError('system not found')
+		map_json = json.dumps(map_data)
+		c.execute('UPDATE maps SET json = ?', (map_json,))
+	return map_json
+
 class DBRow:
 	def __init__(self, result, description):
 		for i, f in enumerate(description):

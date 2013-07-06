@@ -140,6 +140,28 @@ class DataHandler:
 			systems = [row.solarSystemName for row in r]
 		self.write_message('SYS ' + json.dumps(systems))
 
+	def signatures(self, text):
+		lines = text.split('\n')
+		system_name = lines[0]
+		sigs = []
+		for l in lines[1:]:
+			if len(l) == 0:
+				break
+			fields = l.split('\t')
+			if len(fields) != 6: # ID, scan group, group, type, signal, distance
+				break
+			if not fields[1].startswith('Cosmic '):
+				break
+			fields[1] = fields[1][7:]
+			sigs.append(fields[:5])
+		if len(sigs):
+			map_json = db.add_signatures(system_name, sigs)
+			self.__send_map(map_json)
+	def delete_signature(self, args):
+		system_name, sig_id = args.split()
+		map_json = db.delete_signature(system_name, sig_id)
+		self.__send_map(map_json)
+
 class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 	def __init__(self, *args, **kwargs):
 		super(MapWSHandler, self).__init__(*args, **kwargs)
@@ -164,6 +186,10 @@ class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 			self.toggle_eol(split[1])
 		elif split[0] == 'SYS':
 			self.autocomplete(split[1])
+		elif split[0] == 'SIGS':
+			self.signatures(split[1])
+		elif split[0] == 'DELSIG':
+			self.delete_signature(split[1])
 		else:
 			print('unhandled message', message)
 
@@ -184,6 +210,10 @@ class MapAJAXHandler(DataHandler, tornado.web.RequestHandler):
 			self.toggle_eol(args)
 		elif command == 'SYS':
 			self.autocomplete(args)
+		elif command == 'SIGS':
+			self.signatures(args)
+		elif command == 'DELSIG':
+			self.delete_signature(args)
 		else:
 			print('unhandled message', command)
 
