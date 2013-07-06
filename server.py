@@ -92,9 +92,13 @@ class CreateUserHandler(BaseHandler):
 		db.create_user(username, password)
 		self.redirect('/account')
 
+websockets = set()
 class DataHandler:
 	def __send_map(self, map_json):
 		self.write_message('MAP ' + map_json)
+		for ws in websockets:
+			if ws is not self:
+				ws.write_message('MAP ' + map_json)
 
 	def __send_err(self, e):
 		self.write_message('ERR ' + e.message)
@@ -102,7 +106,7 @@ class DataHandler:
 	def helo(self):
 		with db.conn.cursor() as c:
 			r = db.query_one(c, 'SELECT json from maps')
-		self.__send_map(r.json)
+		self.write_message('MAP ' + r.json)
 
 	def add(self, system_json):
 		try:
@@ -151,6 +155,7 @@ class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 			user_id = int(tornado.web.decode_signed_value(config.web.cookie_secret, 'user_id', user_id_cookie))
 			self.authenticated = True
 			self.helo()
+			websockets.add(self)
 		elif split[0] == 'ADD':
 			self.add(split[1])
 		elif split[0] == 'DELETE':
@@ -161,6 +166,9 @@ class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 			self.autocomplete(split[1])
 		else:
 			print('unhandled message', message)
+
+	def on_close(self):
+		websockets.remove(self)
 
 class MapAJAXHandler(DataHandler, tornado.web.RequestHandler):
 	def get(self, command):
