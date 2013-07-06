@@ -199,7 +199,10 @@ window.addEvent('domready', function() {
 			'target': '_blank',
 		}));
 
-		effect.set('text', system.effect || 'no effect');
+		if (is_wspace(system.name))
+			effect.set('text', system.effect || 'no effect');
+		else
+			effect.set('html', '');
 
 		var static_str = '';
 		if (system.static1)
