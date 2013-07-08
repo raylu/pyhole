@@ -228,13 +228,17 @@ window.addEvent('domready', function() {
 				connections.adopt(toggle, new Element('br'));
 			});
 		}
+
 		trade_hubs.empty();
 		if (system.jumps) {
 			Object.each(system.jumps, function(route, trade_hub) {
-				trade_hubs.grab(new Element('div', {
+				var row = new Element('tr');
+				var nameColumn = new Element('td',{
 					'text': trade_hub + ' (' + route.length + '):',
 					'class': 'trade_hub',
-				}));
+				});
+				row.grab(nameColumn);
+				var routeColumn = new Element('td');
 				Object.each(route, function(j) {
 					var sec;
 					if (j[1] >= 0.5)
@@ -244,9 +248,10 @@ window.addEvent('domready', function() {
 					else
 						sec = 'nullsec';
 					var j = new Element('div', {'class': 'jump ' + sec, 'title': j[0]});
-					trade_hubs.grab(j);
+					routeColumn.grab(j);
 				});
-				trade_hubs.grab(new Element('br'));
+				row.grab(routeColumn);
+				trade_hubs.grab(row);
 			});
 		}
 
