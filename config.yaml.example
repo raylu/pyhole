@@ -5,8 +5,8 @@ web:
 
 db:
     host: localhost
-    user: jmw327
-    password: jmw327
-    database: pywebgo
+    user: pyhole
+    password: pyhole
+    database: pyhole
 
 # vim: set et ft=yaml:
