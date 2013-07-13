@@ -168,7 +168,7 @@ window.addEvent('domready', function() {
 			'x': 0,
 			'y': 0,
 			'points': [x1+ovalWidth/2, y1, x2-ovalWidth/2, y2],
-			'stroke': '#ccc',
+			'stroke': eol && !window.WebSocket ? '#c52' : '#ccc', // dashArray doesn't work in IGB
 			'dashArray': [6, 3],
 			'dashArrayEnabled': Boolean(eol), // undefined behaves like true when dashArray is set
 		});
