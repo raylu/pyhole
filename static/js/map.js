@@ -195,7 +195,7 @@ window.addEvent('domready', function() {
 	var statics = $('statics');
 	var connections = $('connections');
 	var trade_hubs = $('trade_hubs');
-	var signatures = $('signatures');
+	var sigsTable = new HtmlTable($('signatures'));
 	var src = $('src');
 	var current_system = null;
 	function handleClick(system) {
@@ -261,8 +261,10 @@ window.addEvent('domready', function() {
 			});
 		}
 
-		signatures.empty();
+		sigsTable.empty();
 		if (system.signatures) {
+			sigsTable.set('headers', ['ID', 'scan group', 'group', 'type', '']);
+			sigsTable.enableSort();
 			system.signatures.each(function(sig) {
 				var row = new Element('tr');
 				for (var i = 0; i < 4; i++)
@@ -273,9 +275,10 @@ window.addEvent('domready', function() {
 					e.preventDefault();
 					send('DELSIG', system.name + ' ' + sig[0]);
 				});
-				signatures.grab(row);
+				sigsTable.push(row);
 			});
-		}
+		} else
+			sigsTable.set("headers", []);
 
 		src.set('value', system.name);
 

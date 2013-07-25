@@ -43,7 +43,7 @@
 		border-collapse: collapse
 
 		tr:
-			td:
+			td,th:
 				padding: 2px 4px
 				max-width: 200px
 				border-style: solid
@@ -56,8 +56,14 @@
 					border-width: 1px
 			&:last-child td:
 				border-width: 1px
-			&:nth-child(even):
-				background-color: #222
+
+		thead th:
+			font-weight: normal
+			cursor: pointer
+			user-select: none
+
+		tbody tr:nth-child(odd):
+			background-color: #222
 
 .add:
 	label:
