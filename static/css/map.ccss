@@ -1,3 +1,6 @@
+#map:
+	overflow-x: auto
+
 .info, .add:
 	display: none
 	width: 450px
