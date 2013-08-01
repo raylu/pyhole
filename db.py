@@ -80,6 +80,7 @@ def add_system(system):
 				if add_node(c):
 					return True
 
+	root_system = 'src' not in system
 	wspace_system = False
 	if system['dest'][0] == 'J':
 		try:
@@ -87,7 +88,7 @@ def add_system(system):
 			wspace_system = True
 		except ValueError:
 			pass
-	if not wspace_system:
+	if not wspace_system and not root_system:
 		with eve_conn.cursor() as c:
 			r = query_one(c, '''
 			SELECT solarSystemID, security FROM mapSolarSystems
@@ -136,8 +137,10 @@ def add_system(system):
 
 		r = query_one(c, 'SELECT json from maps')
 		map_data = json.loads(r.json)
-		if not any(map(add_node, map_data)):
-			raise UpdateError('src system not found')
+		if root_system:
+			map_data.append({'name': system['dest'], 'class': 'home'})
+		elif not any(map(add_node, map_data)):
+				raise UpdateError('src system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
 	return map_json
