@@ -97,3 +97,9 @@
 	textarea:
 		width: 100%
 		height: 20em
+
+.delete_root:
+	input:
+		margin-top: 15px
+	input[value="no"]:
+		float: right

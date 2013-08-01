@@ -277,9 +277,31 @@ window.addEvent('domready', function() {
 		current_system = system;
 	}
 	$('delete').addEvent('click', function(e) {
-		send('DELETE', system_name.get('text'));
-		bottom_divs.setStyle('display', 'none');
-		dest_ac.setStyle('display', 'none');
+		var send_delete = function() {
+			send('DELETE', system_name.get('text'));
+			bottom_divs.setStyle('display', 'none');
+			dest_ac.setStyle('display', 'none');
+		}
+		if (current_system.class == 'home') {
+			var dr_div = new Element('div', {'class': 'delete_root'});
+			var text = new Element('div', {
+				'text': 'you are about to remove a root system! are you sure?',
+				'class': 'text',
+			});
+			var yes = new Element('input', {'type': 'button', 'value': 'yes'});
+			var no = new Element('input', {'type': 'button', 'value': 'no'});
+			dr_div.adopt(text, yes, no);
+			yes.addEvent('click', function(e) {
+				$('modal_bg').fireEvent('click');
+				send_delete();
+			});
+			no.addEvent('click', function(e) {
+				$('modal_bg').fireEvent('click');
+			});
+			modal(dr_div)
+		} else {
+			send_delete();
+		}
 	});
 	$('paste_sigs').addEvent('click', function(e) {
 		var ps_div = new Element('div', {'class': 'paste_sigs'});
