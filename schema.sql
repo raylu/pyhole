@@ -2,6 +2,7 @@ DROP TABLE IF EXISTS `users`;
 DROP TABLE IF EXISTS `maps`;
 DROP TABLE IF EXISTS `wh_systems`;
 DROP TABLE IF EXISTS `wh_types`;
+DROP TABLE IF EXISTS `log`;
 
 CREATE TABLE `users` (
 	`id` int unsigned NOT NULL AUTO_INCREMENT,
@@ -14,6 +15,17 @@ CREATE TABLE `users` (
 
 CREATE TABLE `maps` (
 	`json` text NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+
+CREATE TABLE `logs` (
+	`id` int unsigned NOT NULL AUTO_INCREMENT,
+	`time` datetime NOT NULL,
+	`user_id` int unsigned NOT NULL,
+	`action_id` tinyint NOT NULL,
+	`log_message` varchar(65) NOT NULL,
+	PRIMARY KEY (`id`),
+	INDEX `i_log_time` (`time`),
+	FOREIGN KEY (user_id) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
 CREATE TABLE `wh_types` (

@@ -54,7 +54,7 @@ input, textarea:
 
 		a:
 			display: inline-block
-			width: 222px // (900 + margin * 2) / num_links - margin * 2 == (900 + 4) / 4 - 4
+			width: 177px // (900 + margin * 2) / num_links - margin * 2 == (900 + 4) / 5 - 4
 			text-align: center
 			padding: 5px
 			margin: 0 2px 4px
@@ -62,4 +62,5 @@ input, textarea:
 			&:first-child:
 				margin-left: 0
 			&:last-child:
+				width: 176px
 				margin-right: 0

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/css/log.css" />
+{% end %}
+
+{% block main %}
+
+<table id="log">
+	<tr>
+		<th class="time">time</th>
+		<th class="user">username</th>
+		<th class="message">description</th>
+	</tr>
+	{% for log_row in log %}
+		<tr>
+			<td class="time">{{ log_row["time"] }}</td>
+			<td class="user">{{ log_row["username"] }}</td>
+			<td class="message">{{ log_row["log_message"] }}</td>
+		</tr>
+	{% end %}
+</table>
+
+{% end %}

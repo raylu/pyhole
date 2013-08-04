@@ -10,6 +10,12 @@ import tornado.httpclient
 conn = oursql.connect(db='pyhole', user='pyhole', passwd='pyhole', autoreconnect=True)
 eve_conn = oursql.connect(db='eve', user='eve', passwd='eve', autoreconnect=True)
 
+class ACTIONS(object):
+	CREATE_USER = 1
+	ADD_SYSTEM = 2
+	DELETE_SYSTEM = 3
+	TOGGLE_EOL = 4
+
 def query(cursor, sql, *args):
 	cursor.execute(sql, args)
 	while True:
@@ -39,11 +45,12 @@ def __gen_hash(password):
 	salt_hex = binascii.hexlify(salt)
 	return hashed, salt_hex
 
-def create_user(username, password):
+def create_user(user_id, username, password):
 	hashed, salt_hex = __gen_hash(password)
 	with conn.cursor() as c:
 		c.execute('INSERT INTO users (username, password, salt, admin) VALUES(?, ?, ?, 0)',
 				[username, hashed, salt_hex])
+		log_action(c, user_id, ACTIONS.CREATE_USER, {'username': username})
 
 def check_login(username, password):
 	with conn.cursor() as c:
@@ -67,7 +74,7 @@ class UpdateError(Exception):
 	def __init__(self, message):
 		self.message = message
 
-def add_system(system):
+def add_system(user_id, system):
 	def add_node(node):
 		if node['name'] == system['src']:
 			node.setdefault('connections', [])
@@ -138,57 +145,72 @@ def add_system(system):
 		r = query_one(c, 'SELECT json from maps')
 		map_data = json.loads(r.json)
 		if root_system:
-			map_data.append({'name': system['dest'], 'class': 'home'})
+			system = {'name': system['dest'], 'class': 'home'}
+			map_data.append(system)
 		elif not any(map(add_node, map_data)):
-				raise UpdateError('src system not found')
+			raise UpdateError('src system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
+		log_action(c, user_id, ACTIONS.ADD_SYSTEM, system)
 	return map_json
 
-def delete_system(system_name):
+def delete_system(user_id, system_name):
 	def delete_node(node):
 		if 'connections' in node:
 			for i, c in enumerate(node['connections']):
 				if c['name'] == system_name:
 					node['connections'].pop(i)
-					return True
-				if delete_node(c):
-					return True
+					return c
+				deleted_node = delete_node(c)
+				if deleted_node:
+					return deleted_node
 
 	with conn.cursor() as c:
 		r = query_one(c, 'SELECT json from maps')
 		map_data = json.loads(r.json)
 		for i, root_node in enumerate(map_data):
 			if root_node['name'] == system_name:
-				map_data.pop(i)
+				deleted_node = map_data.pop(i)
 				break
 		else:
-			if not any(map(delete_node, map_data)):
-				raise UpdateError('system not found')
+			for node in map_data:
+				deleted_node = delete_node(node)
+				if deleted_node is not None:
+					break
+		if deleted_node is None:
+			raise UpdateError('system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
+		log_action(c, user_id, ACTIONS.DELETE_SYSTEM, deleted_node)
 	return map_json
 
-def toggle_eol(src, dest):
+def toggle_eol(user_id, src, dest):
 	def toggle_node(node):
 		if 'connections' in node:
 			for i, c in enumerate(node['connections']):
 				if node['name'] == src and c['name'] == dest:
 					c['eol'] = not c['eol']
-					return True
-				if toggle_node(c):
-					return True
+					return c
+				toggled_node = toggle_node(c)
+				if toggled_node:
+					return toggled_node
 
 	with conn.cursor() as c:
 		r = query_one(c, 'SELECT json from maps')
 		map_data = json.loads(r.json)
-		if not any(map(toggle_node, map_data)):
+		changed_node = None
+		for node in map_data:
+			changed_node = toggle_node(node)
+			if changed_node is not None:
+				break
+		if changed_node is None:
 			raise UpdateError('system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
+		log_action(c, user_id, ACTIONS.TOGGLE_EOL, changed_node)
 	return map_json
 
-def add_signatures(system_name, new_sigs):
+def add_signatures(user_id, system_name, new_sigs):
 	def add_sigs_node(node):
 		if node['name'] == system_name:
 			sigs = node.get('signatures', [])
@@ -201,6 +223,7 @@ def add_signatures(system_name, new_sigs):
 							sig[i] = new_sig[i]
 					del new_sigs[sig_id]
 			sigs.extend(new_sigs.values())
+
 			node['signatures'] = sigs
 			return True
 		if 'connections' in node:
@@ -217,7 +240,7 @@ def add_signatures(system_name, new_sigs):
 		c.execute('UPDATE maps SET json = ?', (map_json,))
 	return map_json
 
-def delete_signature(system_name, sig_id):
+def delete_signature(user_id, system_name, sig_id):
 	def del_sig_node(node):
 		if node['name'] == system_name:
 			index = None
@@ -242,6 +265,35 @@ def delete_signature(system_name, sig_id):
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
 	return map_json
+
+def log_action(cursor, user_id, action, details):
+	if action == ACTIONS.ADD_SYSTEM:
+		if 'src' not in details:
+			log_message = 'added new root system ' + details['name']
+		else:
+			log_message = 'added system {name} connected to {src}'.format(**details)
+	elif action == ACTIONS.DELETE_SYSTEM:
+		if details['class'] == 'home':
+			log_message = 'deleted root system ' + details['name']
+		else:
+			log_message = 'deleted system ' + details['name']
+		if 'connections' in details:
+			for system in details['connections']:
+				log_action(cursor, user_id, ACTIONS.DELETE_SYSTEM, system)
+	elif action == ACTIONS.TOGGLE_EOL:
+		if details['eol']:
+			log_message = 'set {name} to EoL'.format(**details)
+		else:
+			log_message = 'reverted {name} to not EoL'.format(**details)
+	elif action == ACTIONS.CREATE_USER:
+		log_message = 'created user ' + details['username']
+	else:
+		raise RuntimeError('unhandled log_action')
+
+	cursor.execute('''
+	INSERT INTO logs (time, user_id, action_id, log_message)
+	VALUES(UTC_TIMESTAMP(), ?, ?, ?)
+	''', [user_id, action, log_message])
 
 class DBRow:
 	def __init__(self, result, description):
