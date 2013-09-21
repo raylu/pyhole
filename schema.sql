@@ -34,7 +34,7 @@ CREATE TABLE `wh_types` (
 	`src` varchar(11) NOT NULL,
 	`dest` varchar(8) NOT NULL,
 	`lifetime` tinyint NOT NULL,
-	`jump_mass` tinyint NOT NULL,
+	`jump_mass` smallint NOT NULL,
 	`max_mass` smallint NOT NULL,
 	PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;

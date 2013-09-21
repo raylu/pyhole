@@ -217,9 +217,9 @@ window.addEvent('domready', function() {
 
 		var static_str = '';
 		if (system.static1)
-			static_str += system.static1.name + ' to ' + system.static1.dest;
+			static_str += formatStatic(system.static1);
 		if (system.static2)
-			static_str += '<br>' + system.static2.name + ' to ' + system.static2.dest;
+			static_str += '<br>' + formatStatic(system.static2);
 		statics.set('html', static_str);
 
 		connections.empty();
@@ -281,6 +281,13 @@ window.addEvent('domready', function() {
 
 		bottom_divs.setStyle('display', 'inline-block');
 		current_system = system;
+	}
+	function formatStatic(st) {
+		var format = '{name} to {dest} ({lifetime}h, {jump_mass}Kt/j, {max_mass}Kt)';
+		var static_str = format.replace(/{(\w+)}/g, function(match, arg) {
+			return st[arg];
+		});
+		return static_str;
 	}
 	$('delete').addEvent('click', function(e) {
 		var send_delete = function() {

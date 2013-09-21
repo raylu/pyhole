@@ -130,7 +130,8 @@ def add_system(user_id, system):
 	with conn.cursor() as c:
 		if wspace_system:
 			r = query_one(c, '''
-			SELECT class, effect, w1.name, w1.dest, w2.name, w2.dest
+			SELECT class, effect, w1.name, w1.dest, w1.lifetime, w1.jump_mass, w1.max_mass,
+			                      w2.name, w2.dest, w2.lifetime, w2.jump_mass, w2.max_mass
 			FROM wh_systems
 			JOIN wh_types AS w1 ON static1 = w1.id
 			LEFT JOIN wh_types AS w2 ON static2 = w2.id
@@ -138,9 +139,21 @@ def add_system(user_id, system):
 			''', system['dest'])
 			system['class'] = getattr(r, 'class')
 			system['effect'] = r.effect
-			system['static1'] = {'name': r.raw[2], 'dest': r.raw[3]}
-			if r.raw[4] is not None:
-				system['static2'] = {'name': r.raw[4], 'dest': r.raw[5]}
+			system['static1'] = {
+				'name': r.raw[2],
+				'dest': r.raw[3],
+				'lifetime': r.raw[4],
+				'jump_mass': r.raw[5],
+				'max_mass': r.raw[6],
+			}
+			if r.raw[7] is not None:
+				system['static2'] = {
+					'name': r.raw[7],
+					'dest': r.raw[8],
+					'lifetime': r.raw[9],
+					'jump_mass': r.raw[10],
+					'max_mass': r.raw[11],
+				}
 
 		r = query_one(c, 'SELECT json from maps')
 		map_data = json.loads(r.json)
