@@ -136,6 +136,13 @@ class DataHandler:
 		except db.UpdateError as e:
 			self.__send_err(e)
 
+	def detach(self, system_name):
+		try:
+			map_json = db.detach_system(self.user_id, system_name)
+			self.__send_map(map_json)
+		except db.UpdateError as e:
+			self.__send_err(e)
+
 	def toggle_eol(self, system_names):
 		try:
 			src, dest = system_names.split()
@@ -196,6 +203,8 @@ class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 			self.add(split[1])
 		elif split[0] == 'DELETE':
 			self.delete(split[1])
+		elif split[0] == 'DETACH':
+			self.detach(split[1])
 		elif split[0] == 'EOL':
 			self.toggle_eol(split[1])
 		elif split[0] == 'SYS':
@@ -220,6 +229,8 @@ class MapAJAXHandler(DataHandler, tornado.web.RequestHandler):
 			self.add(args)
 		elif command == 'DELETE':
 			self.delete(args)
+		elif command == 'DETACH':
+			self.detach(args)
 		elif command == 'EOL':
 			self.toggle_eol(args)
 		elif command == 'SYS':

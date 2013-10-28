@@ -298,6 +298,9 @@ window.addEvent('domready', function() {
 		bottom_divs.setStyle('display', 'none');
 		dest_ac.setStyle('display', 'none');
 	});
+	$('detach').addEvent('click', function(e) {
+		send('DETACH', system_name.get('text'));
+	});
 	$('paste_sigs').addEvent('click', function(e) {
 		var ps_div = new Element('div', {'class': 'paste_sigs'});
 		var textarea = new Element('textarea', {'class': 'paste_sigs'});

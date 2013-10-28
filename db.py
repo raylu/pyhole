@@ -15,6 +15,7 @@ class ACTIONS(object):
 	ADD_SYSTEM = 2
 	DELETE_SYSTEM = 3
 	TOGGLE_EOL = 4
+	DETACH_SYSTEM = 5
 
 def query(cursor, sql, *args):
 	cursor.execute(sql, args)
@@ -206,6 +207,32 @@ def delete_system(user_id, system_name):
 		log_action(c, user_id, ACTIONS.DELETE_SYSTEM, deleted_node)
 	return map_json
 
+def detach_system(user_id, system_name):
+	def detach_node(node):
+		if 'connections' in node:
+			for i, c in enumerate(node['connections']):
+				if c['name'] == system_name:
+					node['connections'].pop(i)
+					return c
+				detached_node = detach_node(c)
+				if detached_node:
+					return detached_node
+
+	with conn.cursor() as c:
+		r = query_one(c, 'SELECT json from maps')
+		map_data = json.loads(r.json)
+		for node in map_data:
+			detached_node = detach_node(node)
+			if detached_node is not None:
+				break
+		if detached_node is None:
+			raise UpdateError('system not found')
+		map_data.append(detached_node)
+		map_json = json.dumps(map_data)
+		c.execute('UPDATE maps SET json = ?', (map_json,))
+		log_action(c, user_id, ACTIONS.DETACH_SYSTEM, detached_node)
+	return map_json
+
 def toggle_eol(user_id, src, dest):
 	def toggle_node(node):
 		if 'connections' in node:
@@ -299,6 +326,8 @@ def log_action(cursor, user_id, action, details):
 		if 'connections' in details:
 			for system in details['connections']:
 				log_action(cursor, user_id, ACTIONS.DELETE_SYSTEM, system)
+	elif action == ACTIONS.DETACH_SYSTEM:
+		log_message = 'detached system ' + details['name']
 	elif action == ACTIONS.TOGGLE_EOL:
 		if details['eol']:
 			log_message = 'set {name} to EoL'.format(**details)
