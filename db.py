@@ -77,8 +77,8 @@ class UpdateError(Exception):
 def add_system(user_id, system):
 	def add_node(node):
 		found = False
-		if node['name'] == dest:
-			raise UpdateError('source system already exists!')
+		if node['name'] == system['name']:
+			raise UpdateError('src system already exists!')
 		if 'connections' in node:
 			for c in node['connections']:
 				if add_node(c):
@@ -86,8 +86,6 @@ def add_system(user_id, system):
 		# no src when root node; just run above code to dupes
 		if 'src' in system and node['name'] == system['src']:
 			node.setdefault('connections', [])
-			system['name'] = system['dest']
-			del system['dest']
 			node['connections'].append(system)
 			found = True
 		return found
@@ -100,7 +98,7 @@ def add_system(user_id, system):
 			wspace_system = True
 		except ValueError:
 			pass
-	if not wspace_system and not root_system:
+	if not wspace_system:
 		with eve_conn.cursor() as c:
 			r = query_one(c, '''
 			SELECT solarSystemID, security FROM mapSolarSystems
@@ -160,7 +158,8 @@ def add_system(user_id, system):
 					'max_mass': r.raw[11],
 				}
 
-		dest = system['dest']
+		system['name'] = system['dest']
+		del system['dest']
 		r = query_one(c, 'SELECT json from maps')
 		map_data = json.loads(r.json)
 		found = False
@@ -169,7 +168,6 @@ def add_system(user_id, system):
 				found = True
 		if not found:
 			if root_system:
-				system = {'name': system['dest'], 'class': 'home'}
 				map_data.append(system)
 			else:
 				raise UpdateError('src system not found')
@@ -297,10 +295,7 @@ def log_action(cursor, user_id, action, details):
 		else:
 			log_message = 'added system {name} connected to {src}'.format(**details)
 	elif action == ACTIONS.DELETE_SYSTEM:
-		if details['class'] == 'home':
-			log_message = 'deleted root system ' + details['name']
-		else:
-			log_message = 'deleted system ' + details['name']
+		log_message = 'deleted system ' + details['name']
 		if 'connections' in details:
 			for system in details['connections']:
 				log_action(cursor, user_id, ACTIONS.DELETE_SYSTEM, system)

@@ -43,7 +43,7 @@ fedora: `python3-PyYAML`
             grant all on pyhole.* to pyhole@localhost identified by 'pyhole';
         mysql -u pyhole -ppyhole pyhole < schema.sql
         mysql -u pyhole -ppyhole pyhole
-            insert into maps values('[{"name": "J122837", "class": "home"}, {"name": "J171622", "class": "home"}]');
+            insert into maps values('[]');
 
 1. copy `config.yaml.example` to `config.yaml`. edit.
 

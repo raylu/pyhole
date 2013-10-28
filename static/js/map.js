@@ -65,6 +65,8 @@ window.addEvent('domready', function() {
 			stage.setHeight(y);
 			stage.setWidth(cols * 150);
 			stage.add(layer);
+			if (!maps.length)
+				$$('.add').setStyle('display', 'inline-block');
 			break;
 		case 'SYS':
 			var systems = JSON.parse(message);
@@ -109,7 +111,6 @@ window.addEvent('domready', function() {
 	}
 
 	var class_color = {
-		'home': '#404',
 		'highsec': '#040',
 		'lowsec': '#440',
 		'nullsec': '#400',
@@ -293,31 +294,9 @@ window.addEvent('domready', function() {
 		return static_str;
 	}
 	$('delete').addEvent('click', function(e) {
-		var send_delete = function() {
-			send('DELETE', system_name.get('text'));
-			bottom_divs.setStyle('display', 'none');
-			dest_ac.setStyle('display', 'none');
-		}
-		if (current_system.class == 'home') {
-			var dr_div = new Element('div', {'class': 'delete_root'});
-			var text = new Element('div', {
-				'text': 'you are about to remove a root system! are you sure?',
-				'class': 'text',
-			});
-			var yes = new Element('input', {'type': 'button', 'value': 'yes'});
-			var no = new Element('input', {'type': 'button', 'value': 'no'});
-			dr_div.adopt(text, yes, no);
-			yes.addEvent('click', function(e) {
-				$('modal_bg').fireEvent('click');
-				send_delete();
-			});
-			no.addEvent('click', function(e) {
-				$('modal_bg').fireEvent('click');
-			});
-			modal(dr_div)
-		} else {
-			send_delete();
-		}
+		send('DELETE', system_name.get('text'));
+		bottom_divs.setStyle('display', 'none');
+		dest_ac.setStyle('display', 'none');
 	});
 	$('paste_sigs').addEvent('click', function(e) {
 		var ps_div = new Element('div', {'class': 'paste_sigs'});
