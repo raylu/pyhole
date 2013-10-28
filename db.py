@@ -76,16 +76,21 @@ class UpdateError(Exception):
 
 def add_system(user_id, system):
 	def add_node(node):
-		if node['name'] == system['src']:
+		found = False
+		if node['name'] == dest:
+			raise UpdateError('source system already exists!')
+		if 'connections' in node:
+			for c in node['connections']:
+				if add_node(c):
+					found = True
+		# no src when root node; just run above code to dupes
+		if 'src' in system and node['name'] == system['src']:
 			node.setdefault('connections', [])
 			system['name'] = system['dest']
 			del system['dest']
 			node['connections'].append(system)
-			return True
-		if 'connections' in node:
-			for c in node['connections']:
-				if add_node(c):
-					return True
+			found = True
+		return found
 
 	root_system = 'src' not in system
 	wspace_system = False
@@ -155,13 +160,19 @@ def add_system(user_id, system):
 					'max_mass': r.raw[11],
 				}
 
+		dest = system['dest']
 		r = query_one(c, 'SELECT json from maps')
 		map_data = json.loads(r.json)
-		if root_system:
-			system = {'name': system['dest'], 'class': 'home'}
-			map_data.append(system)
-		elif not any(map(add_node, map_data)):
-			raise UpdateError('src system not found')
+		found = False
+		for node in map_data: # try to add to non-roots first (and check for duplicates)
+			if add_node(node):
+				found = True
+		if not found:
+			if root_system:
+				system = {'name': system['dest'], 'class': 'home'}
+				map_data.append(system)
+			else:
+				raise UpdateError('src system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
 		log_action(c, user_id, ACTIONS.ADD_SYSTEM, system)
