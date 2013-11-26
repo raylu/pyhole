@@ -196,7 +196,7 @@ window.addEvent('domready', function() {
 	var statics = $('statics');
 	var connections = $('connections');
 	var trade_hubs = $('trade_hubs');
-	var sigsTable = new HtmlTable($('signatures'));
+	var sigsTable = new HtmlTable($('signatures'), {'sortable': true});
 	var src = $('src');
 	var current_system = null;
 	function handleClick(system) {
@@ -262,6 +262,7 @@ window.addEvent('domready', function() {
 			});
 		}
 
+		var sortState = sigsTable.serialize();
 		sigsTable.empty();
 		if (system.signatures) {
 			var del_all = new Element('a', {'href': '', 'html': '&#x2715;'});
@@ -270,7 +271,6 @@ window.addEvent('domready', function() {
 				send('DELSIG', system.name);
 			});
 			sigsTable.set('headers', ['ID', 'scan group', 'group', 'type', del_all]);
-			sigsTable.enableSort();
 			system.signatures.each(function(sig) {
 				var row = new Element('tr');
 				for (var i = 0; i < 4; i++)
@@ -283,8 +283,13 @@ window.addEvent('domready', function() {
 				});
 				sigsTable.push(row);
 			});
-		} else
-			sigsTable.set("headers", []);
+			sigsTable.enableSort();
+			sigsTable.restore(sortState);
+			sigsTable.reSort();
+		} else {
+			sigsTable.set('headers', []);
+			sigsTable.restore(sortState);
+		}
 
 		src.set('value', system.name);
 
