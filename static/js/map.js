@@ -264,7 +264,12 @@ window.addEvent('domready', function() {
 
 		sigsTable.empty();
 		if (system.signatures) {
-			sigsTable.set('headers', ['ID', 'scan group', 'group', 'type', '']);
+			var del_all = new Element('a', {'href': '', 'html': '&#x2715;'});
+			del_all.addEvent('click', function(e) {
+				e.preventDefault();
+				send('DELSIG', system.name);
+			});
+			sigsTable.set('headers', ['ID', 'scan group', 'group', 'type', del_all]);
 			sigsTable.enableSort();
 			system.signatures.each(function(sig) {
 				var row = new Element('tr');

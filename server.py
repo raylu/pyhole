@@ -180,7 +180,12 @@ class DataHandler:
 			self.__send_map(map_json)
 
 	def delete_signature(self, args):
-		system_name, sig_id = args.split()
+		split = args.split()
+		system_name = split[0]
+		if len(split) > 1:
+			sig_id = split[1]
+		else:
+			sig_id = None
 		map_json = db.delete_signature(self.user_id, system_name, sig_id)
 		self.__send_map(map_json)
 

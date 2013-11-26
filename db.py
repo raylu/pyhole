@@ -292,14 +292,17 @@ def add_signatures(user_id, system_name, new_sigs):
 def delete_signature(user_id, system_name, sig_id):
 	def del_sig_node(node):
 		if node['name'] == system_name:
-			index = None
-			for i, sig in enumerate(node['signatures']):
-				if sig[0] == sig_id:
-					index = i
-					break
-			if index is None:
-				raise UpdateError('sig id not found')
-			node['signatures'].pop(index)
+			if sig_id is None: # delete all the sigs
+				del node['signatures']
+			else: # find and delete the sig in this system
+				index = None
+				for i, sig in enumerate(node['signatures']):
+					if sig[0] == sig_id:
+						index = i
+						break
+				if index is None:
+					raise UpdateError('sig id not found')
+				node['signatures'].pop(index)
 			return True
 		if 'connections' in node:
 			for c in node['connections']:
