@@ -107,10 +107,9 @@ def add_system(user_id, system):
 			''', system['dest'])
 			if r is None:
 				raise UpdateError('system does not exist')
-			security = round(r.security, 1)
-			if security >= 0.5:
+			if r.security >= 0.5:
 				system['class'] = 'highsec'
-			elif security > 0.0:
+			elif r.security > 0.0:
 				system['class'] = 'lowsec'
 			else:
 				system['class'] = 'nullsec'
