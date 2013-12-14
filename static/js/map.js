@@ -98,7 +98,7 @@ window.addEvent('domready', function() {
 		if (node.connections) {
 			for (var i = 0; i < node.connections.length; i++) {
 				var child = node.connections[i];
-				drawLink(x, y, x + 150, y + newLines * rowHeight, child.eol);
+				drawLink(x, y, x + 150, y + newLines * rowHeight, child.eol, child.mass);
 				var stats = drawNode(child, x + 150, y + newLines * rowHeight);
 				newLines += stats[0];
 				newCols = Math.max(stats[1], newCols);
@@ -170,12 +170,20 @@ window.addEvent('domready', function() {
 		sysClassText.on('click', _handleClick);
 		ellipse.on('click', _handleClick);
 	}
-	function drawLink(x1, y1, x2, y2, eol) {
+	function drawLink(x1, y1, x2, y2, eol, mass) {
+		var color;
+		if (mass == 'reduced')
+			color = '#c52';
+		else if (mass == 'critical')
+			color = '#b12';
+		else if (mass == 'stable')
+			color = '#ccc';
 		var line = new Kinetic.Line({
 			'x': 0,
 			'y': 0,
 			'points': [x1+ovalWidth/2, y1, x2-ovalWidth/2, y2],
-			'stroke': eol && !window.WebSocket ? '#c52' : '#ccc', // dashArray doesn't work in IGB
+			'stroke': color,
+			'strokeWidth': !window.WebSocket && eol ? 1 : 2, // the IGB doesn't support dashArray
 			'dashArray': [6, 3],
 			'dashArrayEnabled': Boolean(eol), // undefined behaves like true when dashArray is set
 		});
@@ -226,13 +234,19 @@ window.addEvent('domready', function() {
 		connections.empty();
 		if (system.connections) {
 			var conns = system.connections.each(function(conn) {
-				var toggle = new Element('a', {'html': '(toggle EoL)', 'href': ''});
-				toggle.addEvent('click', function(e) {
-					e.preventDefault();
-					send('EOL', system.name + ' ' + conn.name);
-				});
 				connections.appendText(conn.name + ' ');
-				connections.adopt(toggle, new Element('br'));
+				['EoL', 'reduced', 'critical'].each(function(state) {
+					var toggle = new Element('a', {'html': state + ' ', 'href': ''});
+					toggle.addEvent('click', function(e) {
+						e.preventDefault();
+						send(state.toUpperCase(), system.name + ' ' + conn.name);
+					});
+					if (state == 'EoL' && conn['eol'] || conn['mass'] == state)
+						connections.adopt(new Element('b').adopt(toggle));
+					else
+						connections.adopt(toggle);
+				});
+				connections.adopt(new Element('br'));
 			});
 		}
 

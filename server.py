@@ -151,6 +151,22 @@ class DataHandler:
 		except db.UpdateError as e:
 			self.__send_err(e)
 
+	def toggle_reduced(self, system_names):
+		try:
+			src, dest = system_names.split()
+			map_json = db.toggle_reduced(self.user_id, src, dest)
+			self.__send_map(map_json)
+		except db.UpdateError as e:
+			self.__send_err(e)
+
+	def toggle_critical(self, system_names):
+		try:
+			src, dest = system_names.split()
+			map_json = db.toggle_critical(self.user_id, src, dest)
+			self.__send_map(map_json)
+		except db.UpdateError as e:
+			self.__send_err(e)
+
 	def autocomplete(self, partial):
 		with db.eve_conn.cursor() as c:
 			r = db.query(c, '''
@@ -212,6 +228,10 @@ class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 			self.detach(split[1])
 		elif split[0] == 'EOL':
 			self.toggle_eol(split[1])
+		elif split[0] == 'REDUCED':
+			self.toggle_reduced(split[1])
+		elif split[0] == 'CRITICAL':
+			self.toggle_critical(split[1])
 		elif split[0] == 'SYS':
 			self.autocomplete(split[1])
 		elif split[0] == 'SIGS':
@@ -238,6 +258,10 @@ class MapAJAXHandler(DataHandler, tornado.web.RequestHandler):
 			self.detach(args)
 		elif command == 'EOL':
 			self.toggle_eol(args)
+		elif command == 'REDUCED':
+			self.toggle_reduced(args)
+		elif command == 'CRITICAL':
+			self.toggle_critical(args)
 		elif command == 'SYS':
 			self.autocomplete(args)
 		elif command == 'SIGS':

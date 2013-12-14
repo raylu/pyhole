@@ -10,12 +10,18 @@ import tornado.httpclient
 conn = oursql.connect(db='pyhole', user='pyhole', passwd='pyhole', autoreconnect=True)
 eve_conn = oursql.connect(db='eve', user='eve', passwd='eve', autoreconnect=True)
 
-class ACTIONS(object):
+class ACTIONS:
 	CREATE_USER = 1
 	ADD_SYSTEM = 2
 	DELETE_SYSTEM = 3
 	TOGGLE_EOL = 4
 	DETACH_SYSTEM = 5
+	MASS_CHANGE = 6
+
+class MASS:
+	STABLE = 'stable'
+	REDUCED = 'reduced'
+	CRITICAL = 'critical'
 
 def query(cursor, sql, *args):
 	cursor.execute(sql, args)
@@ -158,6 +164,7 @@ def add_system(user_id, system):
 					'max_mass': r.raw[11],
 				}
 
+		system['mass'] = MASS.STABLE
 		system['name'] = system['dest']
 		del system['dest']
 		r = query_one(c, 'SELECT json from maps')
@@ -232,12 +239,12 @@ def detach_system(user_id, system_name):
 		log_action(c, user_id, ACTIONS.DETACH_SYSTEM, detached_node)
 	return map_json
 
-def toggle_eol(user_id, src, dest):
+def __toggle(fn, src, dest, user_id, action):
 	def toggle_node(node):
 		if 'connections' in node:
 			for i, c in enumerate(node['connections']):
 				if node['name'] == src and c['name'] == dest:
-					c['eol'] = not c['eol']
+					fn(c)
 					return c
 				toggled_node = toggle_node(c)
 				if toggled_node:
@@ -255,8 +262,32 @@ def toggle_eol(user_id, src, dest):
 			raise UpdateError('system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
-		log_action(c, user_id, ACTIONS.TOGGLE_EOL, changed_node)
+		log_action(c, user_id, action, changed_node)
 	return map_json
+
+def toggle_eol(user_id, src, dest):
+	def toggle_connection(c):
+		c['eol'] = not c['eol']
+
+	return __toggle(toggle_connection, src, dest, user_id, ACTIONS.TOGGLE_EOL)
+
+def toggle_reduced(user_id, src, dest):
+	def toggle_connection(c):
+		if c['mass'] == MASS.REDUCED:
+			c['mass'] = MASS.STABLE
+		else:
+			c['mass'] = MASS.REDUCED
+
+	return __toggle(toggle_connection, src, dest, user_id, ACTIONS.MASS_CHANGE)
+
+def toggle_critical(user_id, src, dest):
+	def toggle_connection(c):
+		if c['mass'] == MASS.CRITICAL:
+			c['mass'] = MASS.STABLE
+		else:
+			c['mass'] = MASS.CRITICAL
+
+	return __toggle(toggle_connection, src, dest, user_id, ACTIONS.MASS_CHANGE)
 
 def add_signatures(user_id, system_name, new_sigs):
 	def add_sigs_node(node):
@@ -335,6 +366,11 @@ def log_action(cursor, user_id, action, details):
 			log_message = 'set {name} to EoL'.format(**details)
 		else:
 			log_message = 'reverted {name} to not EoL'.format(**details)
+	elif action == ACTIONS.MASS_CHANGE:
+		if details['mass'] == MASS.STABLE:
+			log_message = 'reverted {name} to {mass}'.format(**details)
+		else:
+			log_message = 'set {name} to {mass}'.format(**details)
 	elif action == ACTIONS.CREATE_USER:
 		log_message = 'created user ' + details['username']
 	else:
