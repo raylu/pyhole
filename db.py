@@ -146,6 +146,8 @@ def add_system(user_id, system):
 			LEFT JOIN wh_types AS w2 ON static2 = w2.id
 			WHERE wh_systems.name = ?;
 			''', system['dest'])
+			if r is None:
+				raise UpdateError('system does not exist')
 			system['class'] = getattr(r, 'class')
 			system['effect'] = r.effect
 			system['static1'] = {
