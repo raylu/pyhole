@@ -145,7 +145,7 @@ class DataHandler:
 
 	def toggle_eol(self, system_names):
 		try:
-			src, dest = system_names.split()
+			src, dest = system_names.split(' ', 1)
 			map_json = db.toggle_eol(self.user_id, src, dest)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
@@ -153,7 +153,7 @@ class DataHandler:
 
 	def toggle_reduced(self, system_names):
 		try:
-			src, dest = system_names.split()
+			src, dest = system_names.split(' ', 1)
 			map_json = db.toggle_reduced(self.user_id, src, dest)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
@@ -161,7 +161,7 @@ class DataHandler:
 
 	def toggle_critical(self, system_names):
 		try:
-			src, dest = system_names.split()
+			src, dest = system_names.split(' ', 1)
 			map_json = db.toggle_critical(self.user_id, src, dest)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
