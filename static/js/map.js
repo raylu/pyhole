@@ -211,7 +211,7 @@ window.addEvent('domready', function() {
 		if (is_wspace(system.name))
 			var url = 'http://wormhol.es/' + system.name;
 		else
-			var url = 'http://eveeye.com/?system=' + system.name;
+			var url = 'http://evemaps.dotlan.net/system/' + system.name;
 		system_name.empty();
 		system_name.grab(new Element('a', {
 			'html': system.name,
