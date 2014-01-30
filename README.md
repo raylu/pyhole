@@ -1,6 +1,6 @@
 pyhole is a wormhole connection mapping tool for [EVE online](http://www.youtube.com/watch?v=XrYe_4vHzgE&t=11m55s).
 
-[![screenshot](http://i.imgur.com/4uWJUhfl.png)](http://i.imgur.com/4uWJUhf.png)
+[![screenshot](http://i.imgur.com/BDXfn5w.png)](http://i.imgur.com/BDXfn5w.png)
 
 alternatives include
 
