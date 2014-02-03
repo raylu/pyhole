@@ -99,7 +99,7 @@ def add_system(user_id, system):
 
 	root_system = 'src' not in system
 	wspace_system = False
-	if system['dest'][0] == 'J':
+	if system['dest'][0].upper() == 'J':
 		try:
 			int(system['dest'][1:])
 			wspace_system = True
@@ -108,11 +108,12 @@ def add_system(user_id, system):
 	if not wspace_system:
 		with eve_conn.cursor() as c:
 			r = query_one(c, '''
-			SELECT solarSystemID, security FROM mapSolarSystems
+			SELECT solarSystemName, solarSystemID, security FROM mapSolarSystems
 			WHERE solarSystemName = ?
 			''', system['dest'])
 			if r is None:
 				raise UpdateError('system does not exist')
+			system['dest'] = r.solarSystemName
 			if r.security >= 0.45:
 				system['class'] = 'highsec'
 			elif r.security > 0.0:
@@ -138,6 +139,7 @@ def add_system(user_id, system):
 			system['jumps'] = jumps
 	with conn.cursor() as c:
 		if wspace_system:
+			system['dest'] = system['dest'].upper()
 			r = query_one(c, '''
 			SELECT class, effect, w1.name, w1.dest, w1.lifetime, w1.jump_mass, w1.max_mass,
 			                      w2.name, w2.dest, w2.lifetime, w2.jump_mass, w2.max_mass
