@@ -284,9 +284,14 @@ window.addEvent('domready', function() {
 				e.preventDefault();
 				send('DELSIG', system.name);
 			});
-			sigsTable.set('headers', ['ID', 'scan group', 'group', 'type', del_all]);
+			var row = new Element('tr');
+			['ID', 'scan group', 'group', 'type'].each(function(header) {
+				row.grab(new Element('th', {'html': header}));
+			});
+			row.grab(new Element('th').grab(del_all));
+			sigsTable.set('headers', row);
 			system.signatures.each(function(sig) {
-				var row = new Element('tr');
+				row = new Element('tr');
 				for (var i = 0; i < 4; i++)
 					row.grab(new Element('td', {'text': sig[i]}));
 				var del_sig = new Element('a', {'href': '', 'html': '&#x2715;'});
