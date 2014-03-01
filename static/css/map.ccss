@@ -13,7 +13,7 @@
 
 	#connections:
 		margin-top: 10px
-		a:
+		a, span:
 			font-size: 12px
 			opacity: 0.8
 

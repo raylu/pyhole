@@ -98,7 +98,7 @@ window.addEvent('domready', function() {
 		if (node.connections) {
 			for (var i = 0; i < node.connections.length; i++) {
 				var child = node.connections[i];
-				drawLink(x, y, x + 150, y + newLines * rowHeight, child.eol, child.mass);
+				drawLink(x, y, x + 150, y + newLines * rowHeight, child.eol, child.mass, child.stargate);
 				var stats = drawNode(child, x + 150, y + newLines * rowHeight);
 				newLines += stats[0];
 				newCols = Math.max(stats[1], newCols);
@@ -170,9 +170,11 @@ window.addEvent('domready', function() {
 		sysClassText.on('click', _handleClick);
 		ellipse.on('click', _handleClick);
 	}
-	function drawLink(x1, y1, x2, y2, eol, mass) {
+	function drawLink(x1, y1, x2, y2, eol, mass, stargate) {
 		var color;
-		if (mass == 'reduced')
+		if (stargate)
+			color = '#040';
+		else if (mass == 'reduced')
 			color = '#c52';
 		else if (mass == 'critical')
 			color = '#b12';
@@ -235,6 +237,11 @@ window.addEvent('domready', function() {
 		if (system.connections) {
 			var conns = system.connections.each(function(conn) {
 				connections.appendText(conn.name + ' ');
+				if (conn.stargate) {
+					var note = new Element('span', {'html': '(stargate)'});
+					connections.adopt(note);
+					return;
+				}
 				['EoL', 'reduced', 'critical'].each(function(state) {
 					var toggle = new Element('a', {'html': state + ' ', 'href': ''});
 					toggle.addEvent('click', function(e) {
