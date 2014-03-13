@@ -240,19 +240,19 @@ window.addEvent('domready', function() {
 				if (conn.stargate) {
 					var note = new Element('span', {'html': '(stargate)'});
 					connections.adopt(note);
-					return;
-				}
-				['EoL', 'reduced', 'critical'].each(function(state) {
-					var toggle = new Element('a', {'html': state + ' ', 'href': ''});
-					toggle.addEvent('click', function(e) {
-						e.preventDefault();
-						send(state.toUpperCase(), system.name + ' ' + conn.name);
+				} else {
+					['EoL', 'reduced', 'critical'].each(function(state) {
+						var toggle = new Element('a', {'html': state + ' ', 'href': ''});
+						toggle.addEvent('click', function(e) {
+							e.preventDefault();
+							send(state.toUpperCase(), system.name + ' ' + conn.name);
+						});
+						if (state == 'EoL' && conn['eol'] || conn['mass'] == state)
+							connections.adopt(new Element('b').adopt(toggle));
+						else
+							connections.adopt(toggle);
 					});
-					if (state == 'EoL' && conn['eol'] || conn['mass'] == state)
-						connections.adopt(new Element('b').adopt(toggle));
-					else
-						connections.adopt(toggle);
-				});
+				}
 				connections.adopt(new Element('br'));
 			});
 		}
