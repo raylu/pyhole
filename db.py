@@ -138,12 +138,13 @@ def add_system(user_id, system):
 			client.close()
 			system['jumps'] = jumps
 
-			stargate = query_one(c, '''
-			SELECT 1 from mapSolarSystemJumps
-			JOIN mapSolarSystems ON toSolarSystemID = solarSystemID
-			WHERE fromSolarSystemID = ? AND solarSystemName = ?;
-			''', r.solarSystemID, system['src'])
-			system['stargate'] = (stargate is not None)
+			if 'src' in system:
+				stargate = query_one(c, '''
+				SELECT 1 from mapSolarSystemJumps
+				JOIN mapSolarSystems ON toSolarSystemID = solarSystemID
+				WHERE fromSolarSystemID = ? AND solarSystemName = ?;
+				''', r.solarSystemID, system['src'])
+				system['stargate'] = (stargate is not None)
 	with conn.cursor() as c:
 		if wspace_system:
 			system['dest'] = system['dest'].upper()
