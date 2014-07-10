@@ -195,8 +195,13 @@ class DataHandler:
 			fields[4] = float(fields[4][:-1]) # '100.0%' -> 100.0
 			sigs[fields[0]] = fields[:5]
 		if len(sigs):
-			map_json = db.update_signatures(self.user_id, system_name, action, sigs)
+			map_json = db.update_signatures(system_name, action, sigs)
 			self.__send_map(map_json)
+
+	def signature_note(self, text):
+		system_name, sig_id, note = text.split('\n')
+		map_json = db.set_signature_note(system_name, sig_id, note)
+		self.__send_map(map_json)
 
 	def delete_signature(self, args):
 		split = args.split()
@@ -205,7 +210,7 @@ class DataHandler:
 			sig_id = split[1]
 		else:
 			sig_id = None
-		map_json = db.delete_signature(self.user_id, system_name, sig_id)
+		map_json = db.delete_signature(system_name, sig_id)
 		self.__send_map(map_json)
 
 class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
@@ -239,6 +244,8 @@ class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 			self.autocomplete(split[1])
 		elif split[0] == 'SIGS':
 			self.signatures(split[1])
+		elif split[0] == 'SIGNOTE':
+			self.signature_note(split[1])
 		elif split[0] == 'DELSIG':
 			self.delete_signature(split[1])
 		else:
@@ -269,6 +276,8 @@ class MapAJAXHandler(DataHandler, tornado.web.RequestHandler):
 			self.autocomplete(args)
 		elif command == 'SIGS':
 			self.signatures(args)
+		elif command == 'SIGNOTE':
+			self.signature_note(args)
 		elif command == 'DELSIG':
 			self.delete_signature(args)
 		else:

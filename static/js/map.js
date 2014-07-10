@@ -292,7 +292,7 @@ window.addEvent('domready', function() {
 				send('DELSIG', system.name);
 			});
 			var row = new Element('tr');
-			['ID', 'scan group', 'group', 'type'].each(function(header) {
+			['ID', 'scan group', 'group', 'type', 'note'].each(function(header) {
 				row.grab(new Element('th', {'html': header}));
 			});
 			row.grab(new Element('th').grab(del_all));
@@ -301,12 +301,30 @@ window.addEvent('domready', function() {
 				row = new Element('tr');
 				for (var i = 0; i < 4; i++)
 					row.grab(new Element('td', {'text': sig[i]}));
-				var del_sig = new Element('a', {'href': '', 'html': '&#x2715;'});
-				row.grab(new Element('td').grab(del_sig));
-				del_sig.addEvent('click', function(e) {
+
+				var note = new Element('td', {'text': sig[5], 'class': 'note'});
+				note.addEvent('click', function(e) {
+					e.preventDefault();
+					var input = new Element('input', {'type': 'text', 'value': sig[5]});
+					input.addEvent('keypress', function(e) {
+						if (e.key == 'enter')
+							send('SIGNOTE', system.name + '\n' + sig[0] + '\n' + input.get('value'));
+					});
+					input.addEvent('blur', function(e) {
+						note.set('html', sig[5]);
+					});
+					note.empty().grab(input);
+					input.focus();
+				});
+				row.grab(note);
+
+				var delSig = new Element('a', {'href': '', 'html': '&#x2715;'});
+				row.grab(new Element('td').grab(delSig));
+				delSig.addEvent('click', function(e) {
 					e.preventDefault();
 					send('DELSIG', system.name + ' ' + sig[0]);
 				});
+
 				sigsTable.push(row);
 			});
 			sigsTable.enableSort();

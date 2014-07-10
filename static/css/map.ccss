@@ -65,6 +65,9 @@
 		tbody tr:nth-child(odd):
 			background-color: #222
 
+		td.note:
+			cursor: pointer
+
 .add:
 	label:
 		width: 75px

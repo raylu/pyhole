@@ -301,7 +301,7 @@ def toggle_critical(user_id, src, dest):
 
 	return __toggle(toggle_connection, src, dest, user_id, ACTIONS.MASS_CHANGE)
 
-def update_signatures(user_id, system_name, action, new_sigs):
+def update_signatures(system_name, action, new_sigs):
 	def update_sigs_node(node):
 		if node['name'] == system_name:
 			if action == 'replace':
@@ -317,13 +317,16 @@ def update_signatures(user_id, system_name, action, new_sigs):
 				if sig_id in new_sigs:
 					new_sig = new_sigs[sig_id]
 					if new_sig[4] >= sig[4]: # compare signal strength
+						new_sig.append('') # add blank note
 						write_sigs.append(new_sig)
 					else:
 						write_sigs.append(old_sig)
 					del new_sigs[sig_id]
 				elif not replace:
 					write_sigs.append(sig)
-			write_sigs.extend(new_sigs.values())
+			for sig in new_sigs.values():
+				sig.append('') # add blank note
+				write_sigs.append(sig)
 			node['signatures'] = write_sigs
 			return True
 		if 'connections' in node:
@@ -340,7 +343,7 @@ def update_signatures(user_id, system_name, action, new_sigs):
 		c.execute('UPDATE maps SET json = ?', (map_json,))
 	return map_json
 
-def delete_signature(user_id, system_name, sig_id):
+def delete_signature(system_name, sig_id):
 	def del_sig_node(node):
 		if node['name'] == system_name:
 			if sig_id is None: # delete all the sigs
@@ -364,6 +367,28 @@ def delete_signature(user_id, system_name, sig_id):
 		r = query_one(c, 'SELECT json from maps')
 		map_data = json.loads(r.json)
 		if not any(map(del_sig_node, map_data)):
+			raise UpdateError('system not found')
+		map_json = json.dumps(map_data)
+		c.execute('UPDATE maps SET json = ?', (map_json,))
+	return map_json
+
+def set_signature_note(system_name, sig_id, note):
+	def set_note_node(node):
+		if node['name'] == system_name:
+			for sig in node['signatures']:
+				if sig[0] == sig_id:
+					sig[5] = note
+					break
+			return True
+		if 'connections' in node:
+			for c in node['connections']:
+				if del_sig_node(c):
+					return True
+
+	with conn.cursor() as c:
+		r = query_one(c, 'SELECT json from maps')
+		map_data = json.loads(r.json)
+		if not any(map(set_note_node, map_data)):
 			raise UpdateError('system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
