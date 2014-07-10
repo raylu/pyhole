@@ -301,31 +301,40 @@ def toggle_critical(user_id, src, dest):
 
 	return __toggle(toggle_connection, src, dest, user_id, ACTIONS.MASS_CHANGE)
 
-def add_signatures(user_id, system_name, new_sigs):
-	def add_sigs_node(node):
+def update_signatures(user_id, system_name, action, new_sigs):
+	def update_sigs_node(node):
 		if node['name'] == system_name:
-			sigs = node.get('signatures', [])
-			for sig in sigs:
+			if action == 'replace':
+				replace = True
+			elif action == 'add':
+				replace = False
+			else:
+				raise UpdateError('invalid signature update action')
+			old_sigs = node.get('signatures', [])
+			write_sigs = []
+			for sig in old_sigs:
 				sig_id = sig[0]
 				if sig_id in new_sigs:
 					new_sig = new_sigs[sig_id]
 					if new_sig[4] >= sig[4]: # compare signal strength
-						for i in range(1, len(new_sig)):
-							sig[i] = new_sig[i]
+						write_sigs.append(new_sig)
+					else:
+						write_sigs.append(old_sig)
 					del new_sigs[sig_id]
-			sigs.extend(new_sigs.values())
-
-			node['signatures'] = sigs
+				elif not replace:
+					write_sigs.append(sig)
+			write_sigs.extend(new_sigs.values())
+			node['signatures'] = write_sigs
 			return True
 		if 'connections' in node:
 			for c in node['connections']:
-				if add_sigs_node(c):
+				if update_sigs_node(c):
 					return True
 
 	with conn.cursor() as c:
 		r = query_one(c, 'SELECT json from maps')
 		map_data = json.loads(r.json)
-		if not any(map(add_sigs_node, map_data)):
+		if not any(map(update_sigs_node, map_data)):
 			raise UpdateError('system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))

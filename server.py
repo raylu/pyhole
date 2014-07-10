@@ -178,7 +178,10 @@ class DataHandler:
 
 	def signatures(self, text):
 		lines = text.split('\n')
-		system_name = lines[0]
+		header = lines[0]
+		index = header.rindex(' ')
+		system_name = header[:index]
+		action = header[index+1:]
 		sigs = {}
 		for l in lines[1:]:
 			if len(l) == 0:
@@ -192,7 +195,7 @@ class DataHandler:
 			fields[4] = float(fields[4][:-1]) # '100.0%' -> 100.0
 			sigs[fields[0]] = fields[:5]
 		if len(sigs):
-			map_json = db.add_signatures(self.user_id, system_name, sigs)
+			map_json = db.update_signatures(self.user_id, system_name, action, sigs)
 			self.__send_map(map_json)
 
 	def delete_signature(self, args):

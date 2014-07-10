@@ -338,15 +338,20 @@ window.addEvent('domready', function() {
 		send('DETACH', system_name.get('text'));
 	});
 	$('paste_sigs').addEvent('click', function(e) {
-		var ps_div = new Element('div', {'class': 'paste_sigs'});
+		var psDiv = new Element('div', {'class': 'paste_sigs'});
 		var textarea = new Element('textarea', {'class': 'paste_sigs'});
-		var button = new Element('input', {'type': 'button', 'value': 'add'});
-		ps_div.adopt(textarea, button);
-		button.addEvent('click', function(e) {
-			send('SIGS', current_system.name + '\n' + textarea.get('value'));
+		var addButton = new Element('input', {'type': 'button', 'value': 'add'});
+		var replaceCheckbox = new Element('input', {'type': 'checkbox', 'id': 'replace'});
+		var replaceLabel = new Element('label', {'type': 'checkbox', 'for': 'replace', 'html': 'replace'});
+		psDiv.adopt(textarea, addButton, replaceCheckbox, replaceLabel);
+		addButton.addEvent('click', function(e) {
+			var action = 'add';
+			if (replaceCheckbox.get('checked'))
+				action = 'replace';
+			send('SIGS', current_system.name + ' ' + action + '\n' + textarea.get('value'));
 			$('modal_bg').fireEvent('click');
 		});
-		modal(ps_div);
+		modal(psDiv);
 		textarea.focus();
 	});
 
