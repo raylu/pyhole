@@ -317,10 +317,10 @@ def update_signatures(system_name, action, new_sigs):
 				if sig_id in new_sigs:
 					new_sig = new_sigs[sig_id]
 					if new_sig[4] >= sig[4]: # compare signal strength
-						new_sig.append('') # add blank note
+						new_sig.append(sig[5]) # keep old note
 						write_sigs.append(new_sig)
 					else:
-						write_sigs.append(old_sig)
+						write_sigs.append(sig)
 					del new_sigs[sig_id]
 				elif not replace:
 					write_sigs.append(sig)
