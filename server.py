@@ -92,6 +92,9 @@ class MapHandler(BaseHandler):
 class AccountHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
+		if isinstance(self.current_user, bytes):
+			self.render('account.html', username=None)
+			return
 		username = self.get_secure_cookie('username')
 		users = None
 		with db.conn.cursor() as c:

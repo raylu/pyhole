@@ -6,42 +6,51 @@
 
 {% block main %}
 
-<div id="account">
-	<form method="post" action="/password">
-		<label for="username">username</label>
-		<input type="text" disabled="disabled" id="username" value="{{ username }}">
-		<br>
-		<label for="password">new password</label>
-		<input type="text" name="password" id="password">
-		<br>
-		<input type="submit">
-		{% module xsrf_form_html() %}
-	</form>
-</div>
-
-{% if admin %}
-	<table id="users">
-		<tr>
-			<th>username</th>
-			<th>admin</th>
-		</tr>
-		{% for user in users %}
-			<tr>
-				<td>{{ user.username }}</td>
-				<td>{{ user.admin and 'y' or 'n' }}</td>
-			</tr>
-		{% end %}
-	</table>
-	<div id="create_user">
-		<form method="post" action="/create_user">
-			<label for="new_username">username</label>:&nbsp;
-			<input type="text" name="username" id="new_username" autocomplete="off">&nbsp;
-			<label for="new_password">password</label>:&nbsp;
-			<input type="text" name="password" id="new_password">
-			<input type="submit" value="new user">
+{% if username %}
+	<div id="account">
+		<form method="post" action="/password">
+			<label for="username">username</label>
+			<input type="text" disabled="disabled" id="username" value="{{ username }}">
+			<br>
+			<label for="password">new password</label>
+			<input type="text" name="password" id="password">
+			<br>
+			<input type="submit">
 			{% module xsrf_form_html() %}
 		</form>
 	</div>
+
+	{% if admin %}
+		<table id="users">
+			<tr>
+				<th>username</th>
+				<th>admin</th>
+			</tr>
+			{% for user in users %}
+				<tr>
+					<td>{{ user.username }}</td>
+					<td>{{ user.admin and 'y' or 'n' }}</td>
+				</tr>
+			{% end %}
+		</table>
+		<div id="create_user">
+			<form method="post" action="/create_user">
+				<label for="new_username">username</label>:&nbsp;
+				<input type="text" name="username" id="new_username" autocomplete="off">&nbsp;
+				<label for="new_password">password</label>:&nbsp;
+				<input type="text" name="password" id="new_password">
+				<input type="submit" value="new user">
+				{% module xsrf_form_html() %}
+			</form>
+		</div>
+	{% end %}
+{% else %}
+	<p>
+		sorry, nothing here for OI OAuth users.
+	</p>
+	<p>
+		you can manage your OI OAuth account <a href="https://oauth.talkinlocal.org/account">here</a>.
+	</p>
 {% end %}
 
 {% end %}
