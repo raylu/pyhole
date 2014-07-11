@@ -1,7 +1,10 @@
 web:
     port: 8888
-    host: 'localhost:8888'
+    websocket_host: 'localhost:8888'
     cookie_secret: 'dis is super sekrit'
+    oi_client_id: null
+    oi_client_secret: null
+    oi_redirect_uri: 'http://127.0.0.1/oi'
 
 db:
     host: localhost

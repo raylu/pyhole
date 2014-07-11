@@ -12,8 +12,11 @@ class Config(object):
 class WebConfig(Config):
 	attrs = frozenset([
 		'port',
-		'host',
+		'websocket_host',
 		'cookie_secret',
+		'oi_client_id',
+		'oi_client_secret',
+		'oi_redirect_uri',
 	])
 
 __doc = yaml.load(open('config.yaml', 'r'))
