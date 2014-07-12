@@ -382,7 +382,7 @@ def set_signature_note(system_name, sig_id, note):
 			return True
 		if 'connections' in node:
 			for c in node['connections']:
-				if del_sig_node(c):
+				if set_note_node(c):
 					return True
 
 	with conn.cursor() as c:
