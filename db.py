@@ -101,7 +101,7 @@ def add_system(username, system):
 	wspace_system = False
 	if system['dest'][0].upper() == 'J':
 		try:
-			int(system['dest'][1:])
+			int(system['dest'][1:4])
 			wspace_system = True
 		except ValueError:
 			pass
