@@ -98,7 +98,7 @@ window.addEvent('domready', function() {
 		if (node.connections) {
 			for (var i = 0; i < node.connections.length; i++) {
 				var child = node.connections[i];
-				drawLink(x, y, x + 150, y + newLines * rowHeight, child.eol, child.mass, child.stargate);
+				drawLink(x, y, x + 150, y + newLines * rowHeight, child.eol, child.mass, child.stargate, child.frigate);
 				var stats = drawNode(child, x + 150, y + newLines * rowHeight);
 				newLines += stats[0];
 				newCols = Math.max(stats[1], newCols);
@@ -170,7 +170,7 @@ window.addEvent('domready', function() {
 		sysClassText.on('click', _handleClick);
 		ellipse.on('click', _handleClick);
 	}
-	function drawLink(x1, y1, x2, y2, eol, mass, stargate) {
+	function drawLink(x1, y1, x2, y2, eol, mass, stargate, frigate) {
 		var color;
 		if (stargate)
 			color = '#040';
@@ -186,6 +186,7 @@ window.addEvent('domready', function() {
 			'points': [x1+ovalWidth/2, y1, x2-ovalWidth/2, y2],
 			'stroke': color,
 			'strokeWidth': !window.WebSocket && eol ? 1 : 2, // the IGB doesn't support dashArray
+			'opacity': frigate ? .3 : 1,
 			'dashArray': [6, 3],
 			'dashArrayEnabled': Boolean(eol), // undefined behaves like true when dashArray is set
 		});
@@ -241,13 +242,13 @@ window.addEvent('domready', function() {
 					var note = new Element('span', {'html': '(stargate)'});
 					connections.adopt(note);
 				} else {
-					['EoL', 'reduced', 'critical'].each(function(state) {
+					['EoL', 'reduced', 'critical', 'frigate'].each(function(state) {
 						var toggle = new Element('a', {'html': state + ' ', 'href': ''});
 						toggle.addEvent('click', function(e) {
 							e.preventDefault();
 							send(state.toUpperCase(), system.name + ' ' + conn.name);
 						});
-						if (state == 'EoL' && conn['eol'] || conn['mass'] == state)
+						if (state == 'EoL' && conn['eol'] || conn['mass'] == state || state == 'frigate' && conn['frigate'])
 							connections.adopt(new Element('b').adopt(toggle));
 						else
 							connections.adopt(toggle);
@@ -399,6 +400,7 @@ window.addEvent('domready', function() {
 			$(id).set('value', '');
 		});
 		$('eol').set('checked', false);
+		$('frigate').set('checked', false);
 		dest_ac.setStyle('display', 'none');
 	});
 

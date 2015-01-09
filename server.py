@@ -199,6 +199,14 @@ class DataHandler:
 		except db.UpdateError as e:
 			self.__send_err(e)
 
+	def toggle_frigate(self, system_names):
+		try:
+			src, dest = system_names.split(' ', 1)
+			map_json = db.toggle_frigate(self.username, src, dest)
+			self.__send_map(map_json)
+		except db.UpdateError as e:
+			self.__send_err(e)
+
 	def autocomplete(self, partial):
 		with db.eve_conn.cursor() as c:
 			r = db.query(c, '''
@@ -280,6 +288,8 @@ class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 			self.signature_note(split[1])
 		elif split[0] == 'DELSIG':
 			self.delete_signature(split[1])
+		elif split[0] == 'FRIGATE':
+			self.toggle_frigate(split[1])
 		else:
 			print('unhandled message', message)
 
@@ -315,6 +325,8 @@ class MapAJAXHandler(DataHandler, tornado.web.RequestHandler):
 			self.signature_note(args)
 		elif command == 'DELSIG':
 			self.delete_signature(args)
+		elif command == 'FRIGATE':
+			self.toggle_frigate(args)
 		else:
 			print('unhandled message', command)
 

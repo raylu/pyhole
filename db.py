@@ -17,6 +17,7 @@ class ACTIONS:
 	TOGGLE_EOL = 4
 	DETACH_SYSTEM = 5
 	MASS_CHANGE = 6
+	TOGGLE_FRIGATE = 7
 
 class MASS:
 	STABLE = 'stable'
@@ -301,6 +302,12 @@ def toggle_critical(username, src, dest):
 
 	return __toggle(toggle_connection, src, dest, username, ACTIONS.MASS_CHANGE)
 
+def toggle_frigate(username, src, dest):
+	def toggle_connection(c):
+		c['frigate'] = not c['frigate']
+
+	return __toggle(toggle_connection, src, dest, username, ACTIONS.TOGGLE_FRIGATE)
+
 def update_signatures(system_name, action, new_sigs):
 	def update_sigs_node(node):
 		if node['name'] == system_name:
@@ -419,6 +426,11 @@ def log_action(cursor, username, action, details):
 			log_message = 'set {name} to {mass}'.format(**details)
 	elif action == ACTIONS.CREATE_USER:
 		log_message = 'created user ' + details['username']
+	elif action == ACTIONS.TOGGLE_FRIGATE:
+		if details['frigate']:
+			log_message = 'set {name} as frigate only'.format(**details)
+		else:
+			log_message = 'set {name} as not frigate only'.format(**details)
 	else:
 		raise RuntimeError('unhandled log_action')
 
