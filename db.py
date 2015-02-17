@@ -106,6 +106,8 @@ def add_system(username, system):
 			wspace_system = True
 		except ValueError:
 			pass
+	if system['dest'].title() == 'Thera':
+		wspace_system = True
 	if not wspace_system:
 		with eve_conn.cursor() as c:
 			r = query_one(c, '''
@@ -133,12 +135,14 @@ def add_system(username, system):
 				'Amarr': 30002187,
 				'Dodixie': 30002659,
 				'Rens': 30002510,
-				'Hek': 30002053,
 			}
 			for trade_hub in jumps.keys():
 				system_id = jumps[trade_hub]
 				response = client.fetch(ec_api.format(r.solarSystemID, system_id))
-				route = json.load(io.TextIOWrapper(response.buffer, 'utf-8'))
+				route = tornado.escape.json_decode(response.body)
+				for i in range(0,len(route)):
+					sec = query_one(c, "SELECT security FROM mapSolarSystems WHERE solarSystemID = ?", route[i]['to']['systemid'])
+					route[i]['to']['security'] = sec.security
 				route = map(lambda j: (j['to']['name'], j['to']['security']), route)
 				jumps[trade_hub] = list(route)
 			client.close()
@@ -153,12 +157,12 @@ def add_system(username, system):
 				system['stargate'] = (stargate is not None)
 	with conn.cursor() as c:
 		if wspace_system:
-			system['dest'] = system['dest'].upper()
+			system['dest'] = system['dest'].title()
 			r = query_one(c, '''
 			SELECT class, effect, w1.name, w1.dest, w1.lifetime, w1.jump_mass, w1.max_mass,
 			                      w2.name, w2.dest, w2.lifetime, w2.jump_mass, w2.max_mass
 			FROM wh_systems
-			JOIN wh_types AS w1 ON static1 = w1.id
+			LEFT JOIN wh_types AS w1 ON static1 = w1.id
 			LEFT JOIN wh_types AS w2 ON static2 = w2.id
 			WHERE wh_systems.name = ?;
 			''', system['dest'])
@@ -166,13 +170,14 @@ def add_system(username, system):
 				raise UpdateError('system does not exist')
 			system['class'] = getattr(r, 'class')
 			system['effect'] = r.effect
-			system['static1'] = {
-				'name': r.raw[2],
-				'dest': r.raw[3],
-				'lifetime': r.raw[4],
-				'jump_mass': r.raw[5],
-				'max_mass': r.raw[6],
-			}
+			if r.raw[2] is not None:
+				system['static1'] = {
+					'name': r.raw[2],
+					'dest': r.raw[3],
+					'lifetime': r.raw[4],
+					'jump_mass': r.raw[5],
+					'max_mass': r.raw[6],
+				}
 			if r.raw[7] is not None:
 				system['static2'] = {
 					'name': r.raw[7],

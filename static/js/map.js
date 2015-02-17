@@ -120,6 +120,8 @@ window.addEvent('domready', function() {
 		4: '#114',
 		5: '#113',
 		6: '#112',
+		12: '#111',
+		13: '#000',
 	}
 	function drawSystem(system, x, y) {
 		var ellipse = new Kinetic.Circle({
@@ -198,6 +200,8 @@ window.addEvent('domready', function() {
 			var num = parseInt(system_name.substr(1), 10);
 			return (num === num); // otherwise, it's NaN
 		}
+		else if (system_name[0].toUpperCase() + system_name.slice(1) == 'Thera')
+			return true
 		return false;
 	}
 
@@ -222,18 +226,22 @@ window.addEvent('domready', function() {
 			'target': '_blank',
 		}));
 
-		if (is_wspace(system.name))
+		if (is_wspace(system.name)) {
 			effect.set('text', system.effect || 'no effect');
-		else
+			var static_str = '';
+			if (system.static1) {
+				static_str += formatStatic(system.static1);
+			}
+			if (system.static2) {
+				static_str += '<br>' + formatStatic(system.static2);
+			}
+			statics.set('html', static_str || 'unknown static');
+		}
+		else {
 			effect.set('html', '');
-
-		var static_str = '';
-		if (system.static1)
-			static_str += formatStatic(system.static1);
-		if (system.static2)
-			static_str += '<br>' + formatStatic(system.static2);
-		statics.set('html', static_str);
-
+			statics.set('html', '');
+		}
+		
 		connections.empty();
 		if (system.connections) {
 			var conns = system.connections.each(function(conn) {
@@ -270,7 +278,7 @@ window.addEvent('domready', function() {
 				var routeColumn = new Element('td');
 				Object.each(route, function(j) {
 					var sec;
-					if (j[1] >= 0.5)
+					if (j[1] >= 0.45)
 						sec = 'highsec';
 					else if (j[1] > 0.0)
 						sec = 'lowsec';
