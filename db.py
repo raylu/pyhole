@@ -1,14 +1,15 @@
-import binascii
-import hashlib
-import hmac
-import io
+import atexit
 import json
-import oursql
-import os
+from os import path
+import struct
+
+from passlib.apps import custom_app_context
+import plyvel
 import tornado.httpclient
 
-conn = oursql.connect(db='pyhole', user='pyhole', passwd='pyhole', autoreconnect=True)
-eve_conn = oursql.connect(db='eve', user='eve', passwd='eve', autoreconnect=True)
+pyhole_dir = path.dirname(path.abspath(__file__))
+db_path = path.join(pyhole_dir, 'database')
+db = users_db = systems_db = None
 
 class ACTIONS:
 	CREATE_USER = 1
@@ -24,65 +25,62 @@ class MASS:
 	REDUCED = 'reduced'
 	CRITICAL = 'critical'
 
-def query(cursor, sql, *args):
-	cursor.execute(sql, args)
-	while True:
-		r = cursor.fetchone()
-		if r is None:
-			break
-		attribs = DBRow(r, cursor.description)
-		yield attribs
+def init_db(create_if_missing):
+	global db, users_db, systems_db
+	db = plyvel.DB(db_path, create_if_missing=create_if_missing)
+	users_db = db.prefixed_db(b'user-')
+	systems_db = db.prefixed_db(b'systems-')
 
-def query_one(cursor, sql, *args):
-	results = query(cursor, sql, *args)
-	try:
-		r = next(results)
-	except StopIteration:
-		return
-	try:
-		next(results)
-	except StopIteration:
-		return r
-	else:
-		raise RuntimeError('multiple rows for query {}, {}'.format(sql, args))
+	atexit.register(db.close)
 
-def __gen_hash(password):
-	salt = os.urandom(16)
-	h = hmac.new(salt, password.encode('utf-8'), hashlib.sha256)
-	hashed = h.hexdigest()
-	salt_hex = binascii.hexlify(salt)
-	return hashed, salt_hex
+def create_user(username, password, admin):
+	if users_db.get(username.encode('utf-8')) is not None:
+		raise Exception('user already exists')
+	hashed = custom_app_context.encrypt(password)
+	user = User(username, hashed, int(admin))
+	user.save()
 
-def create_user(user_id, username, password):
-	hashed, salt_hex = __gen_hash(password)
-	with conn.cursor() as c:
-		c.execute('INSERT INTO users (username, password, salt, admin) VALUES(?, ?, ?, 0)',
-				[username, hashed, salt_hex])
-		log_action(c, user_id, ACTIONS.CREATE_USER, {'username': username})
+def delete_user(username):
+	users_db.delete(username.encode('utf-8'))
 
 def check_login(username, password):
-	with conn.cursor() as c:
-		r = query_one(c, 'SELECT id, password, salt FROM users WHERE username = ?', username)
-	if r is None:
-		return
-	salt = binascii.unhexlify(bytes(r.salt, 'ascii'))
-	h = hmac.new(salt, password.encode('utf-8'), hashlib.sha256)
-	if h.hexdigest() == r.password:
-		return r.id
+	user = User.get(username)
+	if user is None:
+		return None
+	if custom_app_context.verify(password, user.hashed):
+		return user
+	else:
+		return None
 
-def change_password(user_id, password):
-	hashed, salt_hex = __gen_hash(password)
-	with conn.cursor() as c:
-		c.execute('UPDATE users SET password = ?, salt = ? WHERE id = ?',
-				[hashed, salt_hex, user_id])
-		if c.rowcount != 1:
-			raise RuntimeError('expected to update 1 row, affected {}'.format(c.rowcount))
+def change_password(username, old_password, new_password):
+	user = check_login(username, old_password)
+	if user is None:
+		return False
+	user.hashed = custom_app_context.encrypt(new_password)
+	user.save()
+	return True
+
+def iter_users():
+	with users_db.iterator(include_value=False) as it:
+		for username in it:
+			yield username.decode('utf-8')
 
 class UpdateError(Exception):
 	def __init__(self, message):
 		self.message = message
 
-def add_system(user_id, system):
+def get_map_json():
+	return db.get(b'map').decode('utf-8')
+
+def _get_map():
+	return json.loads(get_map_json())
+
+def _set_map(map_data):
+	map_json = json.dumps(map_data)
+	db.put(b'map', map_json.encode('utf-8'))
+	return map_json
+
+def add_system(username, system):
 	def add_node(node):
 		found = False
 		if node['name'] == system['name']:
@@ -99,111 +97,88 @@ def add_system(user_id, system):
 		return found
 
 	root_system = 'src' not in system
-	wspace_system = False
-	if system['dest'][0].upper() == 'J':
-		try:
-			int(system['dest'][1:4])
-			wspace_system = True
-		except ValueError:
-			pass
-	if system['dest'].title() == 'Thera':
-		wspace_system = True
-	if not wspace_system:
-		with eve_conn.cursor() as c:
-			r = query_one(c, '''
-			SELECT solarSystemName, solarSystemID, security, regionID FROM mapSolarSystems
-			WHERE solarSystemName = ?
-			''', system['dest'])
-			if r is None:
-				raise UpdateError('system does not exist')
-			system['dest'] = r.solarSystemName
-			if r.security >= 0.45:
-				system['class'] = 'highsec'
-			elif r.security > 0.0:
-				system['class'] = 'lowsec'
-			else:
-				system['class'] = 'nullsec'
-			s = query_one(c, '''
-			SELECT regionName FROM mapRegions
-			WHERE regionID = ?
-			''', r.regionID)
-			system['region'] = s.regionName
-			client = tornado.httpclient.HTTPClient()
-			ec_api = 'http://api.eve-central.com/api/route/from/{}/to/{}'
-			jumps = {
-				'Jita': 30000142,
-				'Amarr': 30002187,
-				'Dodixie': 30002659,
-				'Rens': 30002510,
+	ss = SolarSystem.get(system['dest'])
+	if ss is None:
+		raise UpdateError('system does not exist')
+	wspace_system = ss.id > 31000000
+
+	system['region'] = ss.region
+
+	if wspace_system:
+		"""
+		r = query_one(c, '''
+		SELECT class, effect, w1.name, w1.dest, w1.lifetime, w1.jump_mass, w1.max_mass,
+							  w2.name, w2.dest, w2.lifetime, w2.jump_mass, w2.max_mass
+		FROM wh_systems
+		LEFT JOIN wh_types AS w1 ON static1 = w1.id
+		LEFT JOIN wh_types AS w2 ON static2 = w2.id
+		WHERE wh_systems.name = ?;
+		''', system['dest'])
+		if r is None:
+			raise UpdateError('system does not exist')
+		system['class'] = getattr(r, 'class')
+		system['effect'] = r.effect
+		if r.raw[2] is not None:
+			system['static1'] = {
+				'name': r.raw[2],
+				'dest': r.raw[3],
+				'lifetime': r.raw[4],
+				'jump_mass': r.raw[5],
+				'max_mass': r.raw[6],
 			}
-			for trade_hub in jumps.keys():
-				system_id = jumps[trade_hub]
-				response = client.fetch(ec_api.format(r.solarSystemID, system_id))
-				route = tornado.escape.json_decode(response.body)
-				for i in range(0,len(route)):
-					sec = query_one(c, "SELECT security FROM mapSolarSystems WHERE solarSystemID = ?", route[i]['to']['systemid'])
-					route[i]['to']['security'] = sec.security
-				route = map(lambda j: (j['to']['name'], j['to']['security']), route)
-				jumps[trade_hub] = list(route)
-			client.close()
-			system['jumps'] = jumps
+		if r.raw[7] is not None:
+			system['static2'] = {
+				'name': r.raw[7],
+				'dest': r.raw[8],
+				'lifetime': r.raw[9],
+				'jump_mass': r.raw[10],
+				'max_mass': r.raw[11],
+			}
+		"""
+	else:
+		"""
+		if 'src' in system:
+			stargate = query_one(c, '''
+			SELECT 1 from mapSolarSystemJumps
+			JOIN mapSolarSystems ON toSolarSystemID = solarSystemID
+			WHERE fromSolarSystemID = ? AND solarSystemName = ?;
+			''', r.solarSystemID, system['src'])
+			system['stargate'] = (stargate is not None)
+		"""
 
-			if 'src' in system:
-				stargate = query_one(c, '''
-				SELECT 1 from mapSolarSystemJumps
-				JOIN mapSolarSystems ON toSolarSystemID = solarSystemID
-				WHERE fromSolarSystemID = ? AND solarSystemName = ?;
-				''', r.solarSystemID, system['src'])
-				system['stargate'] = (stargate is not None)
-	with conn.cursor() as c:
-		if wspace_system:
-			system['dest'] = system['dest'].title()
-			r = query_one(c, '''
-			SELECT class, effect, w1.name, w1.dest, w1.lifetime, w1.jump_mass, w1.max_mass,
-			                      w2.name, w2.dest, w2.lifetime, w2.jump_mass, w2.max_mass
-			FROM wh_systems
-			LEFT JOIN wh_types AS w1 ON static1 = w1.id
-			LEFT JOIN wh_types AS w2 ON static2 = w2.id
-			WHERE wh_systems.name = ?;
-			''', system['dest'])
-			if r is None:
-				raise UpdateError('system does not exist')
-			system['class'] = getattr(r, 'class')
-			system['effect'] = r.effect
-			if r.raw[2] is not None:
-				system['static1'] = {
-					'name': r.raw[2],
-					'dest': r.raw[3],
-					'lifetime': r.raw[4],
-					'jump_mass': r.raw[5],
-					'max_mass': r.raw[6],
-				}
-			if r.raw[7] is not None:
-				system['static2'] = {
-					'name': r.raw[7],
-					'dest': r.raw[8],
-					'lifetime': r.raw[9],
-					'jump_mass': r.raw[10],
-					'max_mass': r.raw[11],
-				}
+		client = tornado.httpclient.HTTPClient()
+		ec_api = 'http://api.eve-central.com/api/route/from/{}/to/{}'
+		jumps = {
+			'Jita': 30000142,
+			'Amarr': 30002187,
+			'Dodixie': 30002659,
+			'Rens': 30002510,
+		}
+		for trade_hub in jumps.keys():
+			system_id = jumps[trade_hub]
+			response = client.fetch(ec_api.format(ss.id, system_id))
+			route = tornado.escape.json_decode(response.body)
+			route = map(lambda j: (j['to']['name'], j['to']['security']), route)
+			jumps[trade_hub] = list(route)
+		client.close()
+		system['jumps'] = jumps
 
-		system['mass'] = MASS.STABLE
-		system['name'] = system['dest']
-		del system['dest']
-		r = query_one(c, 'SELECT json from maps')
-		map_data = json.loads(r.json)
-		found = False
-		for node in map_data: # try to add to non-roots first (and check for duplicates)
-			if add_node(node):
-				found = True
-		if not found:
-			if root_system:
-				map_data.append(system)
-			else:
-				raise UpdateError('src system not found')
-		map_json = json.dumps(map_data)
-		c.execute('UPDATE maps SET json = ?', (map_json,))
-		log_action(c, user_id, ACTIONS.ADD_SYSTEM, system)
+	system['mass'] = MASS.STABLE
+	system['name'] = system.pop('dest')
+
+	map_data = _get_map()
+	found = False
+	for node in map_data: # try to add to non-roots first (and check for duplicates)
+		if add_node(node):
+			found = True
+	if not found:
+		if root_system:
+			map_data.append(system)
+		else:
+			raise UpdateError('src system not found')
+	map_json = _set_map(map_data)
+
+	log_action(username, ACTIONS.ADD_SYSTEM, system)
 	return map_json
 
 def delete_system(user_id, system_name):
@@ -233,7 +208,7 @@ def delete_system(user_id, system_name):
 			raise UpdateError('system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
-		log_action(c, user_id, ACTIONS.DELETE_SYSTEM, deleted_node)
+		log_action(user_id, ACTIONS.DELETE_SYSTEM, deleted_node)
 	return map_json
 
 def detach_system(user_id, system_name):
@@ -259,8 +234,13 @@ def detach_system(user_id, system_name):
 		map_data.append(detached_node)
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
-		log_action(c, user_id, ACTIONS.DETACH_SYSTEM, detached_node)
+		log_action(user_id, ACTIONS.DETACH_SYSTEM, detached_node)
 	return map_json
+
+def autocomplete(partial):
+	prefix = partial.title().encode('utf-8')
+	iterator = systems_db.iterator(prefix=prefix, include_value=False)
+	return list(map(lambda system: system.decode('utf-8'), iterator))
 
 def __toggle(fn, src, dest, user_id, action):
 	def toggle_node(node):
@@ -274,7 +254,7 @@ def __toggle(fn, src, dest, user_id, action):
 					return toggled_node
 
 	with conn.cursor() as c:
-		r = query_one(c, 'SELECT json from maps')
+		r = query_one(c, 'SELECT json FROM maps')
 		map_data = json.loads(r.json)
 		changed_node = None
 		for node in map_data:
@@ -285,7 +265,7 @@ def __toggle(fn, src, dest, user_id, action):
 			raise UpdateError('system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
-		log_action(c, user_id, action, changed_node)
+		log_action(user_id, action, changed_node)
 	return map_json
 
 def toggle_eol(user_id, src, dest):
@@ -411,7 +391,7 @@ def set_signature_note(system_name, sig_id, note):
 		c.execute('UPDATE maps SET json = ?', (map_json,))
 	return map_json
 
-def log_action(cursor, user_id, action, details):
+def log_action(user_id, action, details):
 	if action == ACTIONS.ADD_SYSTEM:
 		if 'src' not in details:
 			log_message = 'added new root system ' + details['name']
@@ -421,7 +401,7 @@ def log_action(cursor, user_id, action, details):
 		log_message = 'deleted system ' + details['name']
 		if 'connections' in details:
 			for system in details['connections']:
-				log_action(cursor, user_id, ACTIONS.DELETE_SYSTEM, system)
+				log_action(user_id, ACTIONS.DELETE_SYSTEM, system)
 	elif action == ACTIONS.DETACH_SYSTEM:
 		log_message = 'detached system ' + details['name']
 	elif action == ACTIONS.TOGGLE_EOL:
@@ -444,16 +424,60 @@ def log_action(cursor, user_id, action, details):
 	else:
 		raise RuntimeError('unhandled log_action')
 
+	"""
 	cursor.execute('''
 	INSERT INTO logs (time, user_id, action_id, log_message)
 	VALUES(UTC_TIMESTAMP(), ?, ?, ?)
 	''', [user_id, action, log_message])
+	"""
 
-class DBRow:
-	def __init__(self, result, description):
-		for i, f in enumerate(description):
-			setattr(self, f[0], result[i])
-		self.raw = result
+class User:
+	def __init__(self, username, hashed, admin):
+		self.username = username
+		self.hashed = hashed
+		self.admin = admin
 
-	def __str__(self):
-		return '<DBRow>: ' + str(self.__dict__)
+	def save(self):
+		data = struct.pack('I', self.admin) + self.hashed.encode('ascii')
+		users_db.put(self.username.encode('utf-8'), data)
+
+	@staticmethod
+	def get(username):
+		value = users_db.get(username.encode('utf-8'))
+		if value is None:
+			return None
+		admin = struct.unpack('I', value[:4])[0]
+		hashed = value[4:].decode('ascii')
+		return User(username, hashed, admin)
+
+class SolarSystem:
+	def __init__(self, name, id, region, whclass, effect, static1, static2):
+		self.name = name
+		self.id = id
+		self.region = region
+		self.whclass = whclass
+		self.effect = effect
+		self.static1 = static1
+		self.static2 = static2
+
+	def save(self):
+		data = struct.pack('I', self.id)
+		values = [self.region.encode('utf-8'), self.whclass.encode('ascii')]
+		for attr in ['effect', 'static1', 'static2']:
+			value = getattr(self, attr)
+			if value is None:
+				values.append(b'')
+			else:
+				values.append(value.encode('utf-8'))
+		data += b'\0'.join(values)
+		systems_db.put(self.name.encode('utf-8'), data)
+
+	@staticmethod
+	def get(name):
+		value = systems_db.get(name.encode('utf-8'))
+		if value is None:
+			return None
+		id = struct.unpack('I', value[:4])[0]
+		region, whclass, effect, static1, static2 = value[4:].split(b'\0')
+		return SolarSystem(name, id, region.decode('utf-8'), whclass.decode('ascii'),
+				effect.decode('utf-8') or None, static1.decode('utf-8') or None, static2.decode('utf-8') or None)

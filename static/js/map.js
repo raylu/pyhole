@@ -404,9 +404,8 @@ window.addEvent('domready', function() {
 		}
 		send('ADD', JSON.stringify(o));
 
-		['dest', 'to', 'from'].each(function(id) {
-			$(id).set('value', '');
-		});
+		$('src').set('value', '');
+		$('dest').set('value', '');
 		$('eol').set('checked', false);
 		$('frigate').set('checked', false);
 		dest_ac.setStyle('display', 'none');

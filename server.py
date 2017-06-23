@@ -23,9 +23,7 @@ class BaseHandler(tornado.web.RequestHandler):
 		return s.replace(b'\n', b'') # this is like Django's {% spaceless %}
 
 	def get_current_user(self):
-		user_id = self.get_secure_cookie('user_id')
-		if user_id is not None:
-			return int(user_id)
+		return self.get_secure_cookie('username')
 
 class MainHandler(BaseHandler):
 	def get(self):
@@ -35,17 +33,16 @@ class LoginHandler(BaseHandler):
 	def post(self):
 		username = self.get_argument('username')
 		password = self.get_argument('password')
-		user_id = db.check_login(username, password)
-		if user_id is not None:
-			self.set_secure_cookie('user_id', str(user_id), expires_days=90)
-			self.set_secure_cookie('username', username, expires_days=90)
+		user = db.check_login(username, password)
+		if user is not None:
+			self.set_secure_cookie('username', user.username, expires_days=90)
 			self.redirect('/map')
 		else:
 			self.redirect('/')
 
 class LogoutHandler(BaseHandler):
 	def get(self):
-		self.clear_cookie('user_id')
+		self.clear_cookie('username')
 		self.redirect('/')
 
 class MapHandler(BaseHandler):
@@ -71,9 +68,9 @@ class AccountHandler(BaseHandler):
 class PasswordHandler(BaseHandler):
 	@tornado.web.authenticated
 	def post(self):
-		user_id = self.get_current_user()
+		username = self.get_current_user()
 		password = self.get_argument('password')
-		db.change_password(user_id, password)
+		db.change_password(username, password)
 		self.redirect('/account')
 
 class CreateUserHandler(BaseHandler):
@@ -117,14 +114,12 @@ class DataHandler:
 		self.write_message('ERR ' + e.message)
 
 	def helo(self):
-		with db.conn.cursor() as c:
-			r = db.query_one(c, 'SELECT json from maps')
-		self.write_message('MAP ' + r.json)
+		self.write_message('MAP ' + db.get_map_json())
 
 	def add(self, system_json):
 		try:
 			system = json.loads(system_json)
-			map_json = db.add_system(self.user_id, system)
+			map_json = db.add_system(self.username, system)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)
@@ -176,12 +171,7 @@ class DataHandler:
 			self.__send_err(e)
 
 	def autocomplete(self, partial):
-		with db.eve_conn.cursor() as c:
-			r = db.query(c, '''
-					SELECT solarSystemName FROM mapSolarSystems
-					WHERE solarSystemName LIKE ? and security > 0.0
-					''', partial + '%')
-			systems = [row.solarSystemName for row in r]
+		systems = db.autocomplete(partial)
 		self.write_message('SYS ' + json.dumps(systems))
 
 	def signatures(self, text):
@@ -224,16 +214,16 @@ class DataHandler:
 class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 	def __init__(self, *args, **kwargs):
 		super(MapWSHandler, self).__init__(*args, **kwargs)
-		self.user_id = None
+		self.username = None
 
 	def on_message(self, message):
 		split = message.split(' ', 1)
-		if self.user_id is None and split[0] != 'HELO':
+		if self.username is None and split[0] != 'HELO':
 			return
 		if split[0] == 'HELO':
 			cookies = http.cookies.SimpleCookie(split[1])
-			user_id_cookie = cookies['user_id'].value
-			self.user_id = int(tornado.web.decode_signed_value(config.web.cookie_secret, 'user_id', user_id_cookie))
+			username_cookie = cookies['username'].value
+			self.username = tornado.web.decode_signed_value(config.web.cookie_secret, 'username', username_cookie)
 			self.helo()
 			websockets.add(self)
 		elif split[0] == 'ADD':
@@ -242,6 +232,8 @@ class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 			self.delete(split[1])
 		elif split[0] == 'DETACH':
 			self.detach(split[1])
+		elif split[0] == 'FRIGATE':
+			self.toggle_frigate(split[1])
 		elif split[0] == 'EOL':
 			self.toggle_eol(split[1])
 		elif split[0] == 'REDUCED':
@@ -256,13 +248,14 @@ class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 			self.signature_note(split[1])
 		elif split[0] == 'DELSIG':
 			self.delete_signature(split[1])
-		elif split[0] == 'FRIGATE':
-			self.toggle_frigate(split[1])
 		else:
 			print('unhandled message', message)
 
 	def on_close(self):
-		websockets.remove(self)
+		try:
+			websockets.remove(self)
+		except KeyError: # didn't finish helo
+			pass
 
 class MapAJAXHandler(DataHandler, tornado.web.RequestHandler):
 	def get(self, command):
@@ -307,6 +300,7 @@ class CSSHandler(tornado.web.RequestHandler):
 			self.write(cleancss.convert(f))
 
 if __name__ == '__main__':
+	db.init_db(False)
 	tornado.web.Application(
 		handlers=[
 			(r'/', MainHandler),

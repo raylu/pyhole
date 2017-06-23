@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 
 {% block js %}
-<script src="//d3lp1msu2r81bx.cloudfront.net/kjs/js/lib/kinetic-v4.5.2.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/kineticjs/4.6.0/kinetic.min.js"
+	integrity="sha256-ohIe47sGPyld5AF4vo1UsalqYZCynHgPCl/o2Naycac=" crossorigin="anonymous"></script>
 <script src="/static/js/mootools-more-1.4.0.1.js"></script>
 <script>
 	window.config = {
@@ -45,7 +46,7 @@
 	<br>
 	<input type="checkbox" id="eol"><label for="eol">EoL</label>
 	<br>
-	<input type="checkbox" id="frigate"><label for="frigate">Frigate</label>
+	<input type="checkbox" id="frigate"><label for="frigate">frigate</label>
 	<br>
 	<input type="submit" value="add">
 </form></div>
