@@ -53,12 +53,12 @@ def __gen_hash(password):
 	salt_hex = binascii.hexlify(salt)
 	return hashed, salt_hex
 
-def create_user(creator, username, password):
+def create_user(user_id, username, password):
 	hashed, salt_hex = __gen_hash(password)
 	with conn.cursor() as c:
 		c.execute('INSERT INTO users (username, password, salt, admin) VALUES(?, ?, ?, 0)',
 				[username, hashed, salt_hex])
-		log_action(c, creator, ACTIONS.CREATE_USER, {'username': username})
+		log_action(c, user_id, ACTIONS.CREATE_USER, {'username': username})
 
 def check_login(username, password):
 	with conn.cursor() as c:
@@ -82,7 +82,7 @@ class UpdateError(Exception):
 	def __init__(self, message):
 		self.message = message
 
-def add_system(username, system):
+def add_system(user_id, system):
 	def add_node(node):
 		found = False
 		if node['name'] == system['name']:
@@ -203,10 +203,10 @@ def add_system(username, system):
 				raise UpdateError('src system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
-		log_action(c, username, ACTIONS.ADD_SYSTEM, system)
+		log_action(c, user_id, ACTIONS.ADD_SYSTEM, system)
 	return map_json
 
-def delete_system(username, system_name):
+def delete_system(user_id, system_name):
 	def delete_node(node):
 		if 'connections' in node:
 			for i, c in enumerate(node['connections']):
@@ -233,10 +233,10 @@ def delete_system(username, system_name):
 			raise UpdateError('system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
-		log_action(c, username, ACTIONS.DELETE_SYSTEM, deleted_node)
+		log_action(c, user_id, ACTIONS.DELETE_SYSTEM, deleted_node)
 	return map_json
 
-def detach_system(username, system_name):
+def detach_system(user_id, system_name):
 	def detach_node(node):
 		if 'connections' in node:
 			for i, c in enumerate(node['connections']):
@@ -259,10 +259,10 @@ def detach_system(username, system_name):
 		map_data.append(detached_node)
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
-		log_action(c, username, ACTIONS.DETACH_SYSTEM, detached_node)
+		log_action(c, user_id, ACTIONS.DETACH_SYSTEM, detached_node)
 	return map_json
 
-def __toggle(fn, src, dest, username, action):
+def __toggle(fn, src, dest, user_id, action):
 	def toggle_node(node):
 		if 'connections' in node:
 			for i, c in enumerate(node['connections']):
@@ -285,32 +285,32 @@ def __toggle(fn, src, dest, username, action):
 			raise UpdateError('system not found')
 		map_json = json.dumps(map_data)
 		c.execute('UPDATE maps SET json = ?', (map_json,))
-		log_action(c, username, action, changed_node)
+		log_action(c, user_id, action, changed_node)
 	return map_json
 
-def toggle_eol(username, src, dest):
+def toggle_eol(user_id, src, dest):
 	def toggle_connection(c):
 		c['eol'] = not c['eol']
 
-	return __toggle(toggle_connection, src, dest, username, ACTIONS.TOGGLE_EOL)
+	return __toggle(toggle_connection, src, dest, user_id, ACTIONS.TOGGLE_EOL)
 
-def toggle_reduced(username, src, dest):
+def toggle_reduced(user_id, src, dest):
 	def toggle_connection(c):
 		if c['mass'] == MASS.REDUCED:
 			c['mass'] = MASS.STABLE
 		else:
 			c['mass'] = MASS.REDUCED
 
-	return __toggle(toggle_connection, src, dest, username, ACTIONS.MASS_CHANGE)
+	return __toggle(toggle_connection, src, dest, user_id, ACTIONS.MASS_CHANGE)
 
-def toggle_critical(username, src, dest):
+def toggle_critical(user_id, src, dest):
 	def toggle_connection(c):
 		if c['mass'] == MASS.CRITICAL:
 			c['mass'] = MASS.STABLE
 		else:
 			c['mass'] = MASS.CRITICAL
 
-	return __toggle(toggle_connection, src, dest, username, ACTIONS.MASS_CHANGE)
+	return __toggle(toggle_connection, src, dest, user_id, ACTIONS.MASS_CHANGE)
 
 def toggle_frigate(username, src, dest):
 	def toggle_connection(c):
@@ -411,7 +411,7 @@ def set_signature_note(system_name, sig_id, note):
 		c.execute('UPDATE maps SET json = ?', (map_json,))
 	return map_json
 
-def log_action(cursor, username, action, details):
+def log_action(cursor, user_id, action, details):
 	if action == ACTIONS.ADD_SYSTEM:
 		if 'src' not in details:
 			log_message = 'added new root system ' + details['name']
@@ -421,7 +421,7 @@ def log_action(cursor, username, action, details):
 		log_message = 'deleted system ' + details['name']
 		if 'connections' in details:
 			for system in details['connections']:
-				log_action(cursor, username, ACTIONS.DELETE_SYSTEM, system)
+				log_action(cursor, user_id, ACTIONS.DELETE_SYSTEM, system)
 	elif action == ACTIONS.DETACH_SYSTEM:
 		log_message = 'detached system ' + details['name']
 	elif action == ACTIONS.TOGGLE_EOL:
@@ -445,9 +445,9 @@ def log_action(cursor, username, action, details):
 		raise RuntimeError('unhandled log_action')
 
 	cursor.execute('''
-	INSERT INTO logs (time, username, action_id, log_message)
+	INSERT INTO logs (time, user_id, action_id, log_message)
 	VALUES(UTC_TIMESTAMP(), ?, ?, ?)
-	''', [username, action, log_message])
+	''', [user_id, action, log_message])
 
 class DBRow:
 	def __init__(self, result, description):

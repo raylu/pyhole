@@ -2,9 +2,7 @@
 
 import cleancss
 import http.cookies
-import io
 import json
-import tornado.auth
 import tornado.ioloop
 import tornado.web
 import tornado.websocket
@@ -16,7 +14,7 @@ import db
 
 class BaseHandler(tornado.web.RequestHandler):
 	def render(self, *args, **kwargs):
-		kwargs['websocket_host'] = config.web.websocket_host
+		kwargs['host'] = config.web.host
 		kwargs['path'] = self.request.uri
 		return super(BaseHandler, self).render(*args, **kwargs)
 
@@ -27,10 +25,7 @@ class BaseHandler(tornado.web.RequestHandler):
 	def get_current_user(self):
 		user_id = self.get_secure_cookie('user_id')
 		if user_id is not None:
-			try:
-				return int(user_id)
-			except ValueError:
-				return user_id # OI OAuth user
+			return int(user_id)
 
 class MainHandler(BaseHandler):
 	def get(self):
@@ -48,36 +43,6 @@ class LoginHandler(BaseHandler):
 		else:
 			self.redirect('/')
 
-class OIHandler(BaseHandler, tornado.auth.OAuth2Mixin):
-	_OAUTH_AUTHORIZE_URL = 'https://oauth.talkinlocal.org/authorize'
-	_OAUTH_ACCESS_TOKEN_URL = 'https://oauth.talkinlocal.org/token'
-	def get(self):
-		code = self.get_argument('code', None)
-		if not code:
-			self.authorize_redirect(client_id=config.web.oi_client_id,
-					redirect_uri=config.web.oi_redirect_uri, scope=['auth_info'])
-			return
-		rt_url = self._oauth_request_token_url(client_id=config.web.oi_client_id,
-				client_secret=config.web.oi_client_secret, code=code,
-				redirect_uri=config.web.oi_redirect_uri, extra_params={'grant_type': 'authorization_code'})
-		data = self.fetch_json(rt_url)
-		access_token = data['access_token']
-		data = self.fetch_json('https://oauth.talkinlocal.org/api/v1/auth_user?access_token=' + access_token)
-		user = data['user']
-		if user['auth_status'] != 'Internal':
-			self.write(user['auth_status'] + ' users are not allowed')
-			return
-		self.set_secure_cookie('user_id', user['user_id'], expires_days=90)
-		self.set_secure_cookie('username', user['user_id'], expires_days=90)
-		self.redirect('/map')
-
-	def fetch_json(self, url):
-		client = tornado.httpclient.HTTPClient()
-		response = client.fetch(url)
-		data = json.load(io.TextIOWrapper(response.buffer, 'utf-8'))
-		client.close()
-		return data
-
 class LogoutHandler(BaseHandler):
 	def get(self):
 		self.clear_cookie('user_id')
@@ -92,9 +57,6 @@ class MapHandler(BaseHandler):
 class AccountHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
-		if isinstance(self.current_user, bytes):
-			self.render('account.html', username=None)
-			return
 		username = self.get_secure_cookie('username')
 		users = None
 		with db.conn.cursor() as c:
@@ -118,7 +80,8 @@ class CreateUserHandler(BaseHandler):
 	@tornado.web.authenticated
 	def post(self):
 		with db.conn.cursor() as c:
-			r = db.query_one(c, 'SELECT admin FROM users WHERE id = ?', self.current_user)
+			self.user_id = int(self.get_secure_cookie('user_id'))
+			r = db.query_one(c, 'SELECT admin FROM users WHERE id = ?', self.user_id)
 			admin = bool(r.admin)
 			if not admin:
 				raise tornado.web.HTTPError(403)
@@ -126,14 +89,19 @@ class CreateUserHandler(BaseHandler):
 		password = self.get_argument('password')
 		if not username or not password:
 			raise tornado.web.HTTPError(400)
-		db.create_user(self.get_secure_cookie('username'), username, password)
+		db.create_user(self.user_id, username, password)
 		self.redirect('/account')
 
 class LogHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
 		with db.conn.cursor() as c:
-			log_rows = db.query(c, 'SELECT time, username, log_message FROM logs ORDER BY time DESC LIMIT 50')
+			log_rows = db.query(c, '''
+				SELECT l.time, u.username, l.action_id, l.log_message
+				FROM logs AS l
+				JOIN users AS u ON u.id = l.user_id
+				ORDER BY time DESC LIMIT 50
+				''')
 			log = map(operator.attrgetter('__dict__'), log_rows)
 			self.render('log.html', log=log)
 
@@ -156,21 +124,21 @@ class DataHandler:
 	def add(self, system_json):
 		try:
 			system = json.loads(system_json)
-			map_json = db.add_system(self.username, system)
+			map_json = db.add_system(self.user_id, system)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)
 
 	def delete(self, system_name):
 		try:
-			map_json = db.delete_system(self.username, system_name)
+			map_json = db.delete_system(self.user_id, system_name)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)
 
 	def detach(self, system_name):
 		try:
-			map_json = db.detach_system(self.username, system_name)
+			map_json = db.detach_system(self.user_id, system_name)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)
@@ -178,7 +146,7 @@ class DataHandler:
 	def toggle_eol(self, system_names):
 		try:
 			src, dest = system_names.split(' ', 1)
-			map_json = db.toggle_eol(self.username, src, dest)
+			map_json = db.toggle_eol(self.user_id, src, dest)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)
@@ -186,7 +154,7 @@ class DataHandler:
 	def toggle_reduced(self, system_names):
 		try:
 			src, dest = system_names.split(' ', 1)
-			map_json = db.toggle_reduced(self.username, src, dest)
+			map_json = db.toggle_reduced(self.user_id, src, dest)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)
@@ -194,7 +162,7 @@ class DataHandler:
 	def toggle_critical(self, system_names):
 		try:
 			src, dest = system_names.split(' ', 1)
-			map_json = db.toggle_critical(self.username, src, dest)
+			map_json = db.toggle_critical(self.user_id, src, dest)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)
@@ -256,16 +224,16 @@ class DataHandler:
 class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 	def __init__(self, *args, **kwargs):
 		super(MapWSHandler, self).__init__(*args, **kwargs)
-		self.username = None
+		self.user_id = None
 
 	def on_message(self, message):
 		split = message.split(' ', 1)
-		if self.username is None and split[0] != 'HELO':
+		if self.user_id is None and split[0] != 'HELO':
 			return
 		if split[0] == 'HELO':
 			cookies = http.cookies.SimpleCookie(split[1])
-			username_cookie = cookies['username'].value
-			self.username = tornado.web.decode_signed_value(config.web.cookie_secret, 'username', username_cookie)
+			user_id_cookie = cookies['user_id'].value
+			self.user_id = int(tornado.web.decode_signed_value(config.web.cookie_secret, 'user_id', user_id_cookie))
 			self.helo()
 			websockets.add(self)
 		elif split[0] == 'ADD':
@@ -294,14 +262,11 @@ class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 			print('unhandled message', message)
 
 	def on_close(self):
-		try:
-			websockets.remove(self)
-		except KeyError:
-			pass
+		websockets.remove(self)
 
 class MapAJAXHandler(DataHandler, tornado.web.RequestHandler):
 	def get(self, command):
-		self.username = self.get_secure_cookie('username') # auth check
+		self.user_id = int(self.get_secure_cookie('user_id')) # auth check
 		args = self.get_argument('args', None)
 		if command == 'HELO':
 			self.helo()
@@ -346,7 +311,6 @@ if __name__ == '__main__':
 		handlers=[
 			(r'/', MainHandler),
 			(r'/login', LoginHandler),
-			(r'/oi', OIHandler),
 			(r'/logout', LogoutHandler),
 			(r'/map', MapHandler),
 			(r'/map.ws', MapWSHandler),
