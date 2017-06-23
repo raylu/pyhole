@@ -126,7 +126,7 @@ class DataHandler:
 
 	def delete(self, system_name):
 		try:
-			map_json = db.delete_system(self.user_id, system_name)
+			map_json = db.delete_system(self.username, system_name)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)

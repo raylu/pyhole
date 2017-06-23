@@ -103,8 +103,10 @@ def add_system(username, system):
 	wspace_system = ss.id > 31000000
 
 	system['region'] = ss.region
+	system['class'] = ss.whclass
 
 	if wspace_system:
+		system['effect'] = ss.effect
 		"""
 		r = query_one(c, '''
 		SELECT class, effect, w1.name, w1.dest, w1.lifetime, w1.jump_mass, w1.max_mass,
@@ -117,7 +119,6 @@ def add_system(username, system):
 		if r is None:
 			raise UpdateError('system does not exist')
 		system['class'] = getattr(r, 'class')
-		system['effect'] = r.effect
 		if r.raw[2] is not None:
 			system['static1'] = {
 				'name': r.raw[2],
@@ -181,7 +182,7 @@ def add_system(username, system):
 	log_action(username, ACTIONS.ADD_SYSTEM, system)
 	return map_json
 
-def delete_system(user_id, system_name):
+def delete_system(username, system_name):
 	def delete_node(node):
 		if 'connections' in node:
 			for i, c in enumerate(node['connections']):
@@ -192,23 +193,21 @@ def delete_system(user_id, system_name):
 				if deleted_node:
 					return deleted_node
 
-	with conn.cursor() as c:
-		r = query_one(c, 'SELECT json from maps')
-		map_data = json.loads(r.json)
-		for i, root_node in enumerate(map_data):
-			if root_node['name'] == system_name:
-				deleted_node = map_data.pop(i)
+	map_data = _get_map()
+	for i, root_node in enumerate(map_data):
+		if root_node['name'] == system_name:
+			deleted_node = map_data.pop(i)
+			break
+	else:
+		for node in map_data:
+			deleted_node = delete_node(node)
+			if deleted_node is not None:
 				break
-		else:
-			for node in map_data:
-				deleted_node = delete_node(node)
-				if deleted_node is not None:
-					break
-		if deleted_node is None:
-			raise UpdateError('system not found')
-		map_json = json.dumps(map_data)
-		c.execute('UPDATE maps SET json = ?', (map_json,))
-		log_action(user_id, ACTIONS.DELETE_SYSTEM, deleted_node)
+	if deleted_node is None:
+		raise UpdateError('system not found')
+	map_json = _set_map(map_data)
+
+	log_action(username, ACTIONS.DELETE_SYSTEM, deleted_node)
 	return map_json
 
 def detach_system(user_id, system_name):
