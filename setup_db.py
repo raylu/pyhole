@@ -15,7 +15,9 @@ def main(sqlite_path):
 
 	db.init_db(True)
 
-	wormholes = get_wormholes('wormholes.csv')
+	csv.register_dialect('wormholes',
+			lineterminator='\n', quoting=csv.QUOTE_MINIMAL, skipinitialspace=True, strict=True)
+	wormholes = get_wormholes('setup_data/wormholes.csv')
 
 	conn = sqlite3.connect(sqlite_path)
 	conn.row_factory = sqlite3.Row
@@ -46,6 +48,18 @@ def main(sqlite_path):
 			effect = static1 = static2 = None
 		db.SolarSystem(name, id, region, whclass, effect, static1, static2).save()
 
+	for wh_type in get_wh_types('setup_data/wh_types.csv'):
+		"""
+		id = wh_type['id']
+		name = wh_type['name']
+		src = wh_type['src']
+		dest = wh_type['dest']
+		lifetime = wh_type['lifetime']
+		jump_mass = wh_type['jump_mass']
+		max_mass = wh_type['max_mass']
+		"""
+		db.WHType(**wh_type).save()
+
 	username = input('username: ')
 	password = getpass('password: ')
 	db.create_user(None, username, password, True)
@@ -54,15 +68,17 @@ def main(sqlite_path):
 	return 0
 
 def get_wormholes(csv_path):
-	csv.register_dialect('wormholes',
-			lineterminator='\n', quoting=csv.QUOTE_MINIMAL, skipinitialspace=True, strict=True)
 	wormholes = {}
 	with open(csv_path, 'r') as f:
 		reader = csv.DictReader(f, dialect='wormholes')
 		for row in reader:
-			for field in ['effect', 'static1', 'static2']:
-				if field == 'NULL':
-					row['field'] = None
+			if row['effect'] == 'NULL':
+				row['effect'] = None
+			for field in ['static1', 'static2']:
+				if row[field] == 'NULL':
+					row[field] = None
+				else:
+					row[field] = int(row[field])
 			wormholes[int(row['id'])] = {
 				'name': row['name'],
 				'class': row['class'],
@@ -71,6 +87,14 @@ def get_wormholes(csv_path):
 				'static2': row['static2'],
 			}
 	return wormholes
+
+def get_wh_types(csv_path):
+	with open(csv_path, 'r') as f:
+		reader = csv.DictReader(f, dialect='wormholes')
+		for row in reader:
+			for key in ['id', 'lifetime', 'jump_mass', 'max_mass']:
+				row[key] = int(row[key])
+			yield row
 
 if __name__ == '__main__':
 	sys.exit(main(*sys.argv[1:])) # pylint: disable=no-value-for-parameter

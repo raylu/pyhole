@@ -11,7 +11,7 @@ import tornado.httpclient
 
 pyhole_dir = path.dirname(path.abspath(__file__))
 db_path = path.join(pyhole_dir, 'database')
-db = users_db = systems_db = log_db = None
+db = users_db = systems_db = wh_types_db = log_db = None
 
 class ACTIONS:
 	CREATE_USER = 1
@@ -28,10 +28,11 @@ class MASS:
 	CRITICAL = 'critical'
 
 def init_db(create_if_missing):
-	global db, users_db, systems_db, log_db
+	global db, users_db, systems_db, wh_types_db, log_db
 	db = plyvel.DB(db_path, create_if_missing=create_if_missing)
 	users_db = db.prefixed_db(b'user-')
 	systems_db = db.prefixed_db(b'systems-')
+	wh_types_db = db.prefixed_db(b'whtype-')
 	log_db = db.prefixed_db(b'log-')
 
 	atexit.register(db.close)
@@ -114,35 +115,24 @@ def add_system(username, system):
 
 	if wspace_system:
 		system['effect'] = ss.effect
-		"""
-		r = query_one(c, '''
-		SELECT class, effect, w1.name, w1.dest, w1.lifetime, w1.jump_mass, w1.max_mass,
-							  w2.name, w2.dest, w2.lifetime, w2.jump_mass, w2.max_mass
-		FROM wh_systems
-		LEFT JOIN wh_types AS w1 ON static1 = w1.id
-		LEFT JOIN wh_types AS w2 ON static2 = w2.id
-		WHERE wh_systems.name = ?;
-		''', system['dest'])
-		if r is None:
-			raise UpdateError('system does not exist')
-		system['class'] = getattr(r, 'class')
-		if r.raw[2] is not None:
+		if ss.static1:
+			whtype = WHType.get(ss.static1)
 			system['static1'] = {
-				'name': r.raw[2],
-				'dest': r.raw[3],
-				'lifetime': r.raw[4],
-				'jump_mass': r.raw[5],
-				'max_mass': r.raw[6],
+				'name': whtype.name,
+				'dest': whtype.dest,
+				'lifetime': whtype.lifetime,
+				'jump_mass': whtype.jump_mass,
+				'max_mass': whtype.max_mass,
 			}
-		if r.raw[7] is not None:
+		if ss.static2:
+			whtype = WHType.get(ss.static2)
 			system['static2'] = {
-				'name': r.raw[7],
-				'dest': r.raw[8],
-				'lifetime': r.raw[9],
-				'jump_mass': r.raw[10],
-				'max_mass': r.raw[11],
+				'name': whtype.name,
+				'dest': whtype.dest,
+				'lifetime': whtype.lifetime,
+				'jump_mass': whtype.jump_mass,
+				'max_mass': whtype.max_mass,
 			}
-		"""
 	else:
 		"""
 		if 'src' in system:
@@ -462,14 +452,12 @@ class SolarSystem:
 		self.static2 = static2
 
 	def save(self):
-		data = struct.pack('I', self.id)
+		data = struct.pack('III', self.id, self.static1 or 0, self.static2 or 0)
 		values = [self.region.encode('utf-8'), self.whclass.encode('ascii')]
-		for attr in ['effect', 'static1', 'static2']:
-			value = getattr(self, attr)
-			if value is None:
-				values.append(b'')
-			else:
-				values.append(value.encode('utf-8'))
+		if self.effect is None:
+			values.append(b'')
+		else:
+			values.append(self.effect.encode('utf-8'))
 		data += b'\0'.join(values)
 		systems_db.put(self.name.encode('utf-8'), data)
 
@@ -478,7 +466,33 @@ class SolarSystem:
 		value = systems_db.get(name.encode('utf-8'))
 		if value is None:
 			return None
-		id = struct.unpack('I', value[:4])[0]
-		region, whclass, effect, static1, static2 = value[4:].split(b'\0')
+		id, static1, static2 = struct.unpack('III', value[:12])
+		region, whclass, effect = value[12:].split(b'\0')
 		return SolarSystem(name, id, region.decode('utf-8'), whclass.decode('ascii'),
-				effect.decode('utf-8') or None, static1.decode('utf-8') or None, static2.decode('utf-8') or None)
+				effect.decode('utf-8') or None, static1 or None, static2 or None)
+
+class WHType:
+	def __init__(self, id, name, src, dest, lifetime, jump_mass, max_mass):
+		self.id = id
+		self.name = name
+		self.src = src
+		self.dest = dest
+		self.lifetime = lifetime
+		self.jump_mass = jump_mass
+		self.max_mass = max_mass
+
+	def save(self):
+		data = struct.pack('IIII', self.id, self.lifetime, self.jump_mass, self.max_mass)
+		values = [self.name, self.src, self.dest]
+		data += b'\0'.join(map(lambda v: v.encode('ascii'), values))
+		wh_types_db.put(str(self.id).encode('ascii'), data)
+
+	@staticmethod
+	def get(id):
+		value = wh_types_db.get(str(id).encode('ascii'))
+		if value is None:
+			return None
+		id, lifetime, jump_mass, max_mass = struct.unpack('IIII', value[:16])
+		name, src, dest = value[16:].split(b'\0')
+		return WHType(id, name.decode('ascii'), src.decode('ascii'), dest.decode('ascii'),
+				lifetime, jump_mass, max_mass)
