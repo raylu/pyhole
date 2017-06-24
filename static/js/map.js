@@ -187,8 +187,7 @@ window.addEvent('domready', function() {
 			'y': 0,
 			'points': [x1+ovalWidth/2, y1, x2-ovalWidth/2, y2],
 			'stroke': color,
-			'strokeWidth': !window.WebSocket && eol ? 1 : 2, // the IGB doesn't support dashArray
-			'opacity': frigate ? .3 : 1,
+			'strokeWidth': frigate ? 1 : 4,
 			'dashArray': [6, 3],
 			'dashArrayEnabled': Boolean(eol), // undefined behaves like true when dashArray is set
 		});
@@ -256,7 +255,12 @@ window.addEvent('domready', function() {
 							e.preventDefault();
 							send(state.toUpperCase(), system.name + ' ' + conn.name);
 						});
-						if (state == 'EoL' && conn['eol'] || conn['mass'] == state || state == 'frigate' && conn['frigate'])
+						var on;
+						if (state == 'EoL' || state == 'frigate')
+							on = conn[state.toLowerCase()];
+						else
+							on = conn['mass'] == state;
+						if (on)
 							connections.adopt(new Element('b').adopt(toggle));
 						else
 							connections.adopt(toggle);
