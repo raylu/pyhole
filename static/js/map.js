@@ -1,3 +1,4 @@
+/* global $ $$ HtmlTable Kinetic */
 window.addEvent('domready', function() {
 	'use strict';
 	var stage = new Kinetic.Stage({
@@ -16,20 +17,20 @@ window.addEvent('domready', function() {
 			console.debug('connected to', e.target.url);
 			ws.send('HELO ' + document.cookie);
 		};
-		ws.onmessage = function (e) {
+		ws.onmessage = function(e) {
 			parseData(e.data);
-		}
+		};
 		ws.onerror = ws.onclose = function(e) {
 			console.error('ws closed', e);
 			modal('ruh roh!');
 			ws.close();
-		}
+		};
 
 		send = function(command, args) {
 			var message = command + ' ' + args;
 			console.debug(message);
 			ws.send(message);
-		}
+		};
 	} else {
 		send = function(command, args) {
 			console.debug(command, args);
@@ -41,7 +42,7 @@ window.addEvent('domready', function() {
 					modal('ruh roh: ' + xhr.responseText);
 				},
 			}).get({'args': args});
-		}
+		};
 		send('HELO');
 	}
 
@@ -122,7 +123,7 @@ window.addEvent('domready', function() {
 		6: '#112',
 		12: '#111',
 		13: '#000',
-	}
+	};
 	function drawSystem(system, x, y) {
 		var ellipse = new Kinetic.Circle({
 			'x': x,
@@ -160,12 +161,12 @@ window.addEvent('domready', function() {
 			'fontSize': 14,
 			'fontFamily': 'sans-serif',
 			'fill': '#ccc',
-		})
+		});
 		textWidth = sysClassText.getTextWidth();
 		sysClassText.setX(x - textWidth / 2);
 		layer.add(sysClassText);
 
-		function _handleClick(e) {
+		function _handleClick(_e) {
 			handleClick(system);
 		}
 		sysNameText.on('click', _handleClick);
@@ -200,7 +201,7 @@ window.addEvent('domready', function() {
 			return (num === num); // otherwise, it's NaN
 		}
 		else if (system_name[0].toUpperCase() + system_name.slice(1) == 'Thera')
-			return true
+			return true;
 		return false;
 	}
 
@@ -214,10 +215,11 @@ window.addEvent('domready', function() {
 	var src = $('src');
 	var current_system = null;
 	function handleClick(system) {
+		var url;
 		if (is_wspace(system.name))
-			var url = 'http://wh.pasta.gg/' + system.name;
+			url = 'http://wh.pasta.gg/' + system.name;
 		else
-			var url = 'http://evemaps.dotlan.net/system/' + system.name;
+			url = 'http://evemaps.dotlan.net/system/' + system.name;
 		system_name.empty();
 		system_name.grab(new Element('a', {
 			'html': system.name,
@@ -243,7 +245,7 @@ window.addEvent('domready', function() {
 		
 		connections.empty();
 		if (system.connections) {
-			var conns = system.connections.each(function(conn) {
+			system.connections.each(function(conn) {
 				connections.appendText(conn.name + ' ');
 				if (conn.stargate) {
 					var note = new Element('span', {'html': '(stargate)'});
@@ -288,8 +290,8 @@ window.addEvent('domready', function() {
 						sec = 'lowsec';
 					else
 						sec = 'nullsec';
-					var j = new Element('div', {'class': 'jump ' + sec, 'title': j[0]});
-					routeColumn.grab(j);
+					var div = new Element('div', {'class': 'jump ' + sec, 'title': j[0]});
+					routeColumn.grab(div);
 				});
 				row.grab(routeColumn);
 				trade_hubs.grab(row);
