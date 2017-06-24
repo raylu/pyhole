@@ -13,6 +13,8 @@ it uses [websockets](http://caniuse.com/#search=websockets) when available and f
 setup
 --
 
+1. `apt install python3-dev libleveldb-dev`
+1. `pip3 install -r requirements.txt`
 1. `wget https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2`
 1. `bunzip2 sqlite-latest.sqlite.bz2`
 1. `./setup_db.py sqlite-latest.sqlite`
