@@ -7,8 +7,9 @@ window.addEvent('domready', function() {
 		height: 0,
 	});
 	var layer = null;
-	var rowHeight = 75;
-	var ovalWidth = 100;
+	const rowHeight = 75;
+	const rectWidth = 100;
+	const colWidth = 150; // rectangle plus line to the next system
 
 	var send = null;
 	if (window.WebSocket) {
@@ -64,7 +65,7 @@ window.addEvent('domready', function() {
 				cols = Math.max(stats[1], cols);
 			});
 			stage.setHeight(y);
-			stage.setWidth(cols * 150);
+			stage.setWidth(cols * colWidth);
 			stage.add(layer);
 			if (!maps.length)
 				$$('.add').setStyle('display', 'inline-block');
@@ -93,22 +94,34 @@ window.addEvent('domready', function() {
 	}
 
 	function drawNode(node, x, y) {
-		drawSystem(node, x, y);
-		var newLines = 0;
-		var newCols = 0;
+		const newLines = [];
+		let totalNewLines = 0;
+		let newCols = 0;
 		if (node.connections) {
-			for (var i = 0; i < node.connections.length; i++) {
-				var child = node.connections[i];
-				drawLink(x, y, x + 150, y + newLines * rowHeight, child.eol, child.mass, child.stargate, child.frigate);
-				var stats = drawNode(child, x + 150, y + newLines * rowHeight);
-				newLines += stats[0];
+			node.connections.forEach((child) => {
+				const stats = drawNode(child, x + colWidth, y + totalNewLines * rowHeight);
+				totalNewLines += stats[0];
 				newCols = Math.max(stats[1], newCols);
-			}
+				newLines.push(totalNewLines);
+			});
+			const initialY = y;
+			y += (totalNewLines - 1) * rowHeight / 2;
+			node.connections.forEach((child, i) => {
+				let prevLines = 0;
+				if (i > 0)
+					prevLines = newLines[i-1];
+				const childLines = newLines[i] - prevLines;
+				const y2 = initialY + prevLines * rowHeight + (childLines - 1) * rowHeight / 2;
+				drawLink(x, y, x + colWidth, y2,
+					child.eol, child.mass, child.stargate, child.frigate);
+			});
 		}
+		drawSystem(node, x, y);
+
 		if (current_system && node.name == current_system.name) {
 			handleClick(node);
 		}
-		return [newLines || 1, newCols + 1];
+		return [totalNewLines || 1, newCols + 1];
 	}
 
 	var class_color = {
@@ -125,16 +138,16 @@ window.addEvent('domready', function() {
 		13: '#000',
 	};
 	function drawSystem(system, x, y) {
-		var ellipse = new Kinetic.Circle({
-			'x': x,
-			'y': y,
-			'radius': ovalWidth / 2 / 1.75, // radius is half the width, and scaleX = 1.75
+		var rect = new Kinetic.Rect({
+			'x': x - rectWidth / 2,
+			'y': y - rectWidth / 4,
+			'width': rectWidth,
+			'height': rectWidth / 2,
 			'fill': class_color[system.class],
 			'stroke': '#ccc',
 			'strokeWidth': 2,
-			'scaleX': 1.75,
 		});
-		layer.add(ellipse);
+		layer.add(rect);
 		// draw text
 		var sysNameText = new Kinetic.Text({
 			'text': system.name,
@@ -171,7 +184,7 @@ window.addEvent('domready', function() {
 		}
 		sysNameText.on('click', _handleClick);
 		sysClassText.on('click', _handleClick);
-		ellipse.on('click', _handleClick);
+		rect.on('click', _handleClick);
 	}
 	function drawLink(x1, y1, x2, y2, eol, mass, stargate, frigate) {
 		var color;
@@ -186,7 +199,7 @@ window.addEvent('domready', function() {
 		var line = new Kinetic.Line({
 			'x': 0,
 			'y': 0,
-			'points': [x1+ovalWidth/2, y1, x2-ovalWidth/2, y2],
+			'points': [x1+rectWidth/2, y1, x2-rectWidth/2, y2],
 			'stroke': color,
 			'strokeWidth': frigate ? 1 : 4,
 			'dashArray': [6, 3],
