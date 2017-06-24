@@ -3,7 +3,6 @@
 import abc
 import http.cookies
 import json
-import operator
 import os
 
 import cleancss
@@ -13,6 +12,8 @@ import tornado.websocket
 
 import config
 import db
+
+# pylint: disable=arguments-differ,abstract-method
 
 class BaseHandler(tornado.web.RequestHandler):
 	def render(self, *args, **kwargs):
@@ -106,6 +107,10 @@ class LogHandler(BaseHandler):
 
 websockets = set()
 class DataHandler:
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.username = None
+
 	def __send_map(self, map_json):
 		self.write_message('MAP ' + map_json)
 		for ws in websockets:
@@ -218,10 +223,6 @@ class DataHandler:
 		raise NotImplementedError
 
 class MapWSHandler(tornado.websocket.WebSocketHandler, DataHandler):
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-		self.username = None
-
 	def on_message(self, message):
 		split = message.split(' ', 1)
 		if self.username is None and split[0] != 'HELO':
