@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
-import cleancss
+import abc
 import http.cookies
 import json
+import operator
+import os
+
+import cleancss
 import tornado.ioloop
 import tornado.web
 import tornado.websocket
-import operator
-import os
 
 import config
 import db
@@ -16,7 +18,7 @@ class BaseHandler(tornado.web.RequestHandler):
 	def render(self, *args, **kwargs):
 		kwargs['host'] = config.web.host
 		kwargs['path'] = self.request.uri
-		return super(BaseHandler, self).render(*args, **kwargs)
+		return super().render(*args, **kwargs)
 
 	def render_string(self, *args, **kwargs):
 		s = super(BaseHandler, self).render_string(*args, **kwargs)
@@ -211,9 +213,13 @@ class DataHandler:
 		map_json = db.delete_signature(system_name, sig_id)
 		self.__send_map(map_json)
 
-class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
+	@abc.abstractmethod
+	def write_message(self, message):
+		raise NotImplementedError
+
+class MapWSHandler(tornado.websocket.WebSocketHandler, DataHandler):
 	def __init__(self, *args, **kwargs):
-		super(MapWSHandler, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.username = None
 
 	def on_message(self, message):
@@ -257,7 +263,7 @@ class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 		except KeyError: # didn't finish helo
 			pass
 
-class MapAJAXHandler(DataHandler, tornado.web.RequestHandler):
+class MapAJAXHandler(tornado.web.RequestHandler, DataHandler):
 	def get(self, command):
 		self.username = int(self.get_secure_cookie('username')) # auth check
 		args = self.get_argument('args', None)

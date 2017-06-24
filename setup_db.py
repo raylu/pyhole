@@ -73,4 +73,4 @@ def get_wormholes(csv_path):
 	return wormholes
 
 if __name__ == '__main__':
-	sys.exit(main(*sys.argv[1:]))
+	sys.exit(main(*sys.argv[1:])) # pylint: disable=no-value-for-parameter

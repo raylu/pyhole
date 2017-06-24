@@ -243,7 +243,7 @@ def autocomplete(partial):
 def __toggle(fn, src, dest, username, action):
 	def toggle_node(node):
 		if 'connections' in node:
-			for i, c in enumerate(node['connections']):
+			for c in node['connections']:
 				if node['name'] == src and c['name'] == dest:
 					fn(c)
 					return c
