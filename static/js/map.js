@@ -149,10 +149,10 @@ window.addEvent('domready', function() {
 
 
 		var sys_class;
-		if (system.class && !system.class.length) // not a string, so w-space
-			sys_class = 'C' + system.class;
+		if (system.class.endsWith('sec'))
+			sys_class = system.region;
 		else
-			sys_class = system.region || '';
+			sys_class = ('C' + system.class) || '';
 		var sysClassText = new Kinetic.Text({
 			'text': sys_class,
 			'x': x,
