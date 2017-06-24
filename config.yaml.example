@@ -3,10 +3,4 @@ web:
     host: 'localhost:8888'
     cookie_secret: 'dis is super sekrit'
 
-db:
-    host: localhost
-    user: pyhole
-    password: pyhole
-    database: pyhole
-
 # vim: set et ft=yaml:
