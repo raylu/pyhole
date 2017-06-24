@@ -190,6 +190,8 @@ window.addEvent('domready', function() {
 		var color;
 		if (stargate)
 			color = '#040';
+		else if (frigate)
+			color = '#285';
 		else if (mass == 'reduced')
 			color = '#c52';
 		else if (mass == 'critical')
@@ -201,7 +203,7 @@ window.addEvent('domready', function() {
 			'y': 0,
 			'points': [x1+rectWidth/2, y1, x2-rectWidth/2, y2],
 			'stroke': color,
-			'strokeWidth': frigate ? 1 : 4,
+			'strokeWidth': 2,
 			'dashArray': [6, 3],
 			'dashArrayEnabled': Boolean(eol), // undefined behaves like true when dashArray is set
 		});
