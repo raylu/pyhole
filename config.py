@@ -1,6 +1,8 @@
 import yaml
 
 class Config(object):
+	attrs = None
+
 	def __init__(self, cdict):
 		attrs = set(self.attrs) # copy and "unfreeze"
 		for k, v in cdict.items():

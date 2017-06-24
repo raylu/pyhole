@@ -67,6 +67,7 @@ def iter_users():
 
 class UpdateError(Exception):
 	def __init__(self, message):
+		super().__init__(message)
 		self.message = message
 
 def get_map_json():
@@ -210,7 +211,7 @@ def delete_system(username, system_name):
 	log_action(username, ACTIONS.DELETE_SYSTEM, deleted_node)
 	return map_json
 
-def detach_system(user_id, system_name):
+def detach_system(username, system_name):
 	def detach_node(node):
 		if 'connections' in node:
 			for i, c in enumerate(node['connections']):
@@ -221,19 +222,17 @@ def detach_system(user_id, system_name):
 				if detached_node:
 					return detached_node
 
-	with conn.cursor() as c:
-		r = query_one(c, 'SELECT json from maps')
-		map_data = json.loads(r.json)
-		for node in map_data:
-			detached_node = detach_node(node)
-			if detached_node is not None:
-				break
-		if detached_node is None:
-			raise UpdateError('system not found')
-		map_data.append(detached_node)
-		map_json = json.dumps(map_data)
-		c.execute('UPDATE maps SET json = ?', (map_json,))
-		log_action(user_id, ACTIONS.DETACH_SYSTEM, detached_node)
+	map_data = _get_map()
+	for node in map_data:
+		detached_node = detach_node(node)
+		if detached_node is not None:
+			break
+	if detached_node is None:
+		raise UpdateError('system not found')
+	map_data.append(detached_node)
+	map_json = _set_map(map_data)
+
+	log_action(username, ACTIONS.DETACH_SYSTEM, detached_node)
 	return map_json
 
 def autocomplete(partial):
@@ -241,7 +240,7 @@ def autocomplete(partial):
 	iterator = systems_db.iterator(prefix=prefix, include_value=False)
 	return list(map(lambda system: system.decode('utf-8'), iterator))
 
-def __toggle(fn, src, dest, user_id, action):
+def __toggle(fn, src, dest, username, action):
 	def toggle_node(node):
 		if 'connections' in node:
 			for i, c in enumerate(node['connections']):
@@ -252,44 +251,42 @@ def __toggle(fn, src, dest, user_id, action):
 				if toggled_node:
 					return toggled_node
 
-	with conn.cursor() as c:
-		r = query_one(c, 'SELECT json FROM maps')
-		map_data = json.loads(r.json)
-		changed_node = None
-		for node in map_data:
-			changed_node = toggle_node(node)
-			if changed_node is not None:
-				break
-		if changed_node is None:
-			raise UpdateError('system not found')
-		map_json = json.dumps(map_data)
-		c.execute('UPDATE maps SET json = ?', (map_json,))
-		log_action(user_id, action, changed_node)
+	map_data = _get_map()
+	changed_node = None
+	for node in map_data:
+		changed_node = toggle_node(node)
+		if changed_node is not None:
+			break
+	if changed_node is None:
+		raise UpdateError('system not found')
+	map_json = _set_map(map_data)
+
+	log_action(username, action, changed_node)
 	return map_json
 
-def toggle_eol(user_id, src, dest):
+def toggle_eol(username, src, dest):
 	def toggle_connection(c):
 		c['eol'] = not c['eol']
 
-	return __toggle(toggle_connection, src, dest, user_id, ACTIONS.TOGGLE_EOL)
+	return __toggle(toggle_connection, src, dest, username, ACTIONS.TOGGLE_EOL)
 
-def toggle_reduced(user_id, src, dest):
+def toggle_reduced(username, src, dest):
 	def toggle_connection(c):
 		if c['mass'] == MASS.REDUCED:
 			c['mass'] = MASS.STABLE
 		else:
 			c['mass'] = MASS.REDUCED
 
-	return __toggle(toggle_connection, src, dest, user_id, ACTIONS.MASS_CHANGE)
+	return __toggle(toggle_connection, src, dest, username, ACTIONS.MASS_CHANGE)
 
-def toggle_critical(user_id, src, dest):
+def toggle_critical(username, src, dest):
 	def toggle_connection(c):
 		if c['mass'] == MASS.CRITICAL:
 			c['mass'] = MASS.STABLE
 		else:
 			c['mass'] = MASS.CRITICAL
 
-	return __toggle(toggle_connection, src, dest, user_id, ACTIONS.MASS_CHANGE)
+	return __toggle(toggle_connection, src, dest, username, ACTIONS.MASS_CHANGE)
 
 def toggle_frigate(username, src, dest):
 	def toggle_connection(c):
@@ -330,13 +327,10 @@ def update_signatures(system_name, action, new_sigs):
 				if update_sigs_node(c):
 					return True
 
-	with conn.cursor() as c:
-		r = query_one(c, 'SELECT json from maps')
-		map_data = json.loads(r.json)
-		if not any(map(update_sigs_node, map_data)):
-			raise UpdateError('system not found')
-		map_json = json.dumps(map_data)
-		c.execute('UPDATE maps SET json = ?', (map_json,))
+	map_data = _get_map()
+	if not any(map(update_sigs_node, map_data)):
+		raise UpdateError('system not found')
+	map_json = _set_map(map_data)
 	return map_json
 
 def delete_signature(system_name, sig_id):
@@ -359,13 +353,10 @@ def delete_signature(system_name, sig_id):
 				if del_sig_node(c):
 					return True
 
-	with conn.cursor() as c:
-		r = query_one(c, 'SELECT json from maps')
-		map_data = json.loads(r.json)
-		if not any(map(del_sig_node, map_data)):
-			raise UpdateError('system not found')
-		map_json = json.dumps(map_data)
-		c.execute('UPDATE maps SET json = ?', (map_json,))
+	map_data = _get_map()
+	if not any(map(del_sig_node, map_data)):
+		raise UpdateError('system not found')
+	map_json = _set_map(map_data)
 	return map_json
 
 def set_signature_note(system_name, sig_id, note):
@@ -381,16 +372,13 @@ def set_signature_note(system_name, sig_id, note):
 				if set_note_node(c):
 					return True
 
-	with conn.cursor() as c:
-		r = query_one(c, 'SELECT json from maps')
-		map_data = json.loads(r.json)
-		if not any(map(set_note_node, map_data)):
-			raise UpdateError('system not found')
-		map_json = json.dumps(map_data)
-		c.execute('UPDATE maps SET json = ?', (map_json,))
+	map_data = _get_map()
+	if not any(map(set_note_node, map_data)):
+		raise UpdateError('system not found')
+	map_json = _set_map(map_data)
 	return map_json
 
-def log_action(user_id, action, details):
+def log_action(username, action, details):
 	if action == ACTIONS.ADD_SYSTEM:
 		if 'src' not in details:
 			log_message = 'added new root system ' + details['name']
@@ -400,7 +388,7 @@ def log_action(user_id, action, details):
 		log_message = 'deleted system ' + details['name']
 		if 'connections' in details:
 			for system in details['connections']:
-				log_action(user_id, ACTIONS.DELETE_SYSTEM, system)
+				log_action(username, ACTIONS.DELETE_SYSTEM, system)
 	elif action == ACTIONS.DETACH_SYSTEM:
 		log_message = 'detached system ' + details['name']
 	elif action == ACTIONS.TOGGLE_EOL:

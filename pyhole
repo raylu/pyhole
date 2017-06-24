@@ -133,7 +133,7 @@ class DataHandler:
 
 	def detach(self, system_name):
 		try:
-			map_json = db.detach_system(self.user_id, system_name)
+			map_json = db.detach_system(self.username, system_name)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)
@@ -141,7 +141,7 @@ class DataHandler:
 	def toggle_eol(self, system_names):
 		try:
 			src, dest = system_names.split(' ', 1)
-			map_json = db.toggle_eol(self.user_id, src, dest)
+			map_json = db.toggle_eol(self.username, src, dest)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)
@@ -149,7 +149,7 @@ class DataHandler:
 	def toggle_reduced(self, system_names):
 		try:
 			src, dest = system_names.split(' ', 1)
-			map_json = db.toggle_reduced(self.user_id, src, dest)
+			map_json = db.toggle_reduced(self.username, src, dest)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)
@@ -157,7 +157,7 @@ class DataHandler:
 	def toggle_critical(self, system_names):
 		try:
 			src, dest = system_names.split(' ', 1)
-			map_json = db.toggle_critical(self.user_id, src, dest)
+			map_json = db.toggle_critical(self.username, src, dest)
 			self.__send_map(map_json)
 		except db.UpdateError as e:
 			self.__send_err(e)
@@ -259,7 +259,7 @@ class MapWSHandler(DataHandler, tornado.websocket.WebSocketHandler):
 
 class MapAJAXHandler(DataHandler, tornado.web.RequestHandler):
 	def get(self, command):
-		self.user_id = int(self.get_secure_cookie('user_id')) # auth check
+		self.username = int(self.get_secure_cookie('username')) # auth check
 		args = self.get_argument('args', None)
 		if command == 'HELO':
 			self.helo()
