@@ -126,7 +126,7 @@ class DataHandler:
 		except db.UpdateError as e:
 			self.__send_err(e)
 
-	def delete(self, system_name):
+	def delete_system(self, system_name):
 		try:
 			map_json = db.delete_system(self.username, system_name)
 			self.__send_map(map_json)
@@ -236,7 +236,7 @@ class MapWSHandler(tornado.websocket.WebSocketHandler, DataHandler):
 		elif split[0] == 'ADD':
 			self.add(split[1])
 		elif split[0] == 'DELETE':
-			self.delete(split[1])
+			self.delete_system(split[1])
 		elif split[0] == 'DETACH':
 			self.detach(split[1])
 		elif split[0] == 'FRIGATE':
@@ -273,7 +273,7 @@ class MapAJAXHandler(tornado.web.RequestHandler, DataHandler):
 		elif command == 'ADD':
 			self.add(args)
 		elif command == 'DELETE':
-			self.delete(args)
+			self.delete_system(args)
 		elif command == 'DETACH':
 			self.detach(args)
 		elif command == 'EOL':
