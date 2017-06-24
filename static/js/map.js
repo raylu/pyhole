@@ -201,7 +201,7 @@ window.addEvent('domready', function() {
 		var line = new Kinetic.Line({
 			'x': 0,
 			'y': 0,
-			'points': [x1+rectWidth/2, y1, x2-rectWidth/2, y2],
+			'points': [x1 + rectWidth/2, y1, x2 - rectWidth/2 - 2, y2],
 			'stroke': color,
 			'strokeWidth': 2,
 			'dashArray': [6, 3],
