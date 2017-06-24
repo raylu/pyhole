@@ -1,7 +1,9 @@
 import atexit
+import datetime
 import json
 from os import path
 import struct
+import time
 
 from passlib.apps import custom_app_context
 import plyvel
@@ -9,7 +11,7 @@ import tornado.httpclient
 
 pyhole_dir = path.dirname(path.abspath(__file__))
 db_path = path.join(pyhole_dir, 'database')
-db = users_db = systems_db = None
+db = users_db = systems_db = log_db = None
 
 class ACTIONS:
 	CREATE_USER = 1
@@ -26,10 +28,11 @@ class MASS:
 	CRITICAL = 'critical'
 
 def init_db(create_if_missing):
-	global db, users_db, systems_db
+	global db, users_db, systems_db, log_db
 	db = plyvel.DB(db_path, create_if_missing=create_if_missing)
 	users_db = db.prefixed_db(b'user-')
 	systems_db = db.prefixed_db(b'systems-')
+	log_db = db.prefixed_db(b'log-')
 
 	atexit.register(db.close)
 
@@ -414,12 +417,16 @@ def log_action(username, action, details):
 	else:
 		raise RuntimeError('unhandled log_action')
 
-	"""
-	cursor.execute('''
-	INSERT INTO logs (time, user_id, action_id, log_message)
-	VALUES(UTC_TIMESTAMP(), ?, ?, ?)
-	''', [user_id, action, log_message])
-	"""
+	key = str(int(time.time())).encode('ascii')
+	value = ('%s %s' % (username, log_message)).encode('utf-8')
+	log_db.put(key, value)
+
+def iter_log():
+	for key, value in log_db.iterator(reverse=True):
+		ts = int(key)
+		dt = datetime.datetime.utcfromtimestamp(ts)
+		message = value.decode('utf-8')
+		yield dt, message
 
 class User:
 	def __init__(self, username, hashed, admin):

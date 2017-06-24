@@ -9,14 +9,12 @@
 <table id="log">
 	<tr>
 		<th class="time">time</th>
-		<th class="user">username</th>
 		<th class="message">description</th>
 	</tr>
-	{% for log_row in log %}
+	{% for dt, message in log %}
 		<tr>
-			<td class="time">{{ log_row["time"] }}</td>
-			<td class="user">{{ log_row["username"] }}</td>
-			<td class="message">{{ log_row["log_message"] }}</td>
+			<td class="time">{{ dt }}</td>
+			<td class="message">{{ message }}</td>
 		</tr>
 	{% end %}
 </table>

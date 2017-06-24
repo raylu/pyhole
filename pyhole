@@ -101,15 +101,8 @@ class DeleteUserHandler(BaseHandler):
 class LogHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
-		with db.conn.cursor() as c:
-			log_rows = db.query(c, '''
-				SELECT l.time, u.username, l.action_id, l.log_message
-				FROM logs AS l
-				JOIN users AS u ON u.id = l.user_id
-				ORDER BY time DESC LIMIT 50
-				''')
-			log = map(operator.attrgetter('__dict__'), log_rows)
-			self.render('log.html', log=log)
+		log = db.iter_log()
+		self.render('log.html', log=log)
 
 websockets = set()
 class DataHandler:
@@ -236,7 +229,8 @@ class MapWSHandler(tornado.websocket.WebSocketHandler, DataHandler):
 		if split[0] == 'HELO':
 			cookies = http.cookies.SimpleCookie(split[1])
 			username_cookie = cookies['username'].value
-			self.username = tornado.web.decode_signed_value(config.web.cookie_secret, 'username', username_cookie)
+			decrypted = tornado.web.decode_signed_value(config.web.cookie_secret, 'username', username_cookie)
+			self.username = decrypted.decode('utf-8')
 			self.helo()
 			websockets.add(self)
 		elif split[0] == 'ADD':
@@ -272,7 +266,7 @@ class MapWSHandler(tornado.websocket.WebSocketHandler, DataHandler):
 
 class MapAJAXHandler(tornado.web.RequestHandler, DataHandler):
 	def get(self, command):
-		self.username = int(self.get_secure_cookie('username')) # auth check
+		self.username = self.get_secure_cookie('username') # auth check
 		args = self.get_argument('args', None)
 		if command == 'HELO':
 			self.helo()
