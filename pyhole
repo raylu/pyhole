@@ -25,7 +25,9 @@ class BaseHandler(tornado.web.RequestHandler):
 		return s.replace(b'\n', b'') # this is like Django's {% spaceless %}
 
 	def get_current_user(self):
-		return self.get_secure_cookie('username')
+		username = self.get_secure_cookie('username')
+		if username:
+			return username.decode('utf-8')
 
 class MainHandler(BaseHandler):
 	def get(self):
@@ -56,39 +58,44 @@ class MapHandler(BaseHandler):
 class AccountHandler(BaseHandler):
 	@tornado.web.authenticated
 	def get(self):
-		username = self.get_secure_cookie('username')
+		username = self.current_user
+		user = db.User.get(username)
+		admin = bool(user.admin)
 		users = None
-		with db.conn.cursor() as c:
-			user_id = self.get_secure_cookie('user_id')
-			r = db.query_one(c, 'SELECT admin FROM users WHERE id = ?', user_id)
-			admin = bool(r.admin)
-			if admin:
-				users = db.query(c, 'SELECT username, admin FROM users')
-				users = list(users)
+		if admin:
+			users = db.iter_users()
 		self.render('account.html', username=username, admin=admin, users=users)
 
 class PasswordHandler(BaseHandler):
 	@tornado.web.authenticated
 	def post(self):
 		username = self.get_current_user()
-		password = self.get_argument('password')
-		db.change_password(username, password)
+		old_password = self.get_argument('old_password')
+		new_password = self.get_argument('new_password')
+		db.change_password(username, old_password, new_password)
 		self.redirect('/account')
 
 class CreateUserHandler(BaseHandler):
 	@tornado.web.authenticated
 	def post(self):
-		with db.conn.cursor() as c:
-			self.user_id = int(self.get_secure_cookie('user_id'))
-			r = db.query_one(c, 'SELECT admin FROM users WHERE id = ?', self.user_id)
-			admin = bool(r.admin)
-			if not admin:
-				raise tornado.web.HTTPError(403)
+		user = db.User.get(self.current_user)
+		if not user.admin:
+			raise tornado.web.HTTPError(403)
 		username = self.get_argument('username')
 		password = self.get_argument('password')
 		if not username or not password:
 			raise tornado.web.HTTPError(400)
-		db.create_user(self.user_id, username, password)
+		db.create_user(self.current_user, username, password, False)
+		self.redirect('/account')
+
+class DeleteUserHandler(BaseHandler):
+	@tornado.web.authenticated
+	def post(self):
+		user = db.User.get(self.current_user)
+		if not user.admin:
+			raise tornado.web.HTTPError(403)
+		username = self.get_argument('username')
+		db.delete_user(username)
 		self.redirect('/account')
 
 class LogHandler(BaseHandler):
@@ -318,6 +325,7 @@ if __name__ == '__main__':
 			(r'/account', AccountHandler),
 			(r'/password', PasswordHandler),
 			(r'/create_user', CreateUserHandler),
+			(r'/delete_user', DeleteUserHandler),
 			(r'/(css/.+)\.css', CSSHandler),
 			(r'/log', LogHandler),
 		],

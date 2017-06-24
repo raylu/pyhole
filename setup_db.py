@@ -48,7 +48,7 @@ def main(sqlite_path):
 
 	username = input('username: ')
 	password = getpass('password: ')
-	db.create_user(username, password, True)
+	db.create_user(None, username, password, True)
 
 	db.db.put(b'map', b'[]')
 	return 0

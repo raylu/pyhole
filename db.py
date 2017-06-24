@@ -33,12 +33,14 @@ def init_db(create_if_missing):
 
 	atexit.register(db.close)
 
-def create_user(username, password, admin):
-	if users_db.get(username.encode('utf-8')) is not None:
+def create_user(creating_username, new_username, password, admin):
+	if users_db.get(new_username.encode('utf-8')) is not None:
 		raise Exception('user already exists')
 	hashed = custom_app_context.encrypt(password)
-	user = User(username, hashed, int(admin))
+	user = User(new_username, hashed, int(admin))
 	user.save()
+	if creating_username:
+		log_action(creating_username, ACTIONS.CREATE_USER, {'username': new_username})
 
 def delete_user(username):
 	users_db.delete(username.encode('utf-8'))
@@ -61,9 +63,10 @@ def change_password(username, old_password, new_password):
 	return True
 
 def iter_users():
-	with users_db.iterator(include_value=False) as it:
-		for username in it:
-			yield username.decode('utf-8')
+	with users_db.iterator() as it:
+		for username, value in it:
+			user = User.parse(username.decode('utf-8'), value)
+			yield user
 
 class UpdateError(Exception):
 	def __init__(self, message):
@@ -433,6 +436,10 @@ class User:
 		value = users_db.get(username.encode('utf-8'))
 		if value is None:
 			return None
+		return User.parse(username, value)
+
+	@staticmethod
+	def parse(username, value):
 		admin = struct.unpack('I', value[:4])[0]
 		hashed = value[4:].decode('ascii')
 		return User(username, hashed, admin)

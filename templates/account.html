@@ -11,8 +11,11 @@
 		<label for="username">username</label>
 		<input type="text" disabled="disabled" id="username" value="{{ username }}">
 		<br>
-		<label for="password">new password</label>
-		<input type="text" name="password" id="password">
+		<label for="old_password">old password</label>
+		<input type="text" name="old_password" id="old_password">
+		<br>
+		<label for="new_password">new password</label>
+		<input type="text" name="new_password" id="new_password">
 		<br>
 		<input type="submit">
 		{% module xsrf_form_html() %}
@@ -24,11 +27,21 @@
 		<tr>
 			<th>username</th>
 			<th>admin</th>
+			<th>delete</th>
 		</tr>
 		{% for user in users %}
 			<tr>
 				<td>{{ user.username }}</td>
 				<td>{{ user.admin and 'y' or 'n' }}</td>
+				<td>
+					{% if user.username != current_user %}
+						<form action="/delete_user" method="post">
+							<input type="hidden" name="username" value="{{ user.username }}">
+							<input type="submit" value="×">
+							{% module xsrf_form_html() %}
+						</form>
+					{% end %}
+				</td>
 			</tr>
 		{% end %}
 	</table>
@@ -37,7 +50,7 @@
 			<label for="new_username">username</label>:&nbsp;
 			<input type="text" name="username" id="new_username" autocomplete="off">&nbsp;
 			<label for="new_password">password</label>:&nbsp;
-			<input type="text" name="password" id="new_password">
+			<input type="text" name="password" id="password">
 			<input type="submit" value="new user">
 			{% module xsrf_form_html() %}
 		</form>
