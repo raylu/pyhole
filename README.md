@@ -21,9 +21,38 @@ setup
 1. `./pyhole`
 1. after confirming everything works, you'll probably want to set up `lighttpd` like so:
 
-        $HTTP["host"] == "map.hellsinker.org" {
-        	server.document-root = "/var/www/map.hellsinker.org/"
-        	$HTTP["url"] !~ "^/static/" {
-        		proxy.server = ("" => (("host" => "127.0.0.1", "port" => 8001)))
-        	}
-        }
+		HTTP["host"] == "map.hellsinker.org" {
+			server.document-root = "/var/www/map.hellsinker.org/"
+			$HTTP["url"] !~ "^/static/" {
+				proxy.server = ("" => (("host" => "127.0.0.1", "port" => 8001)))
+			}
+		}
+
+	or nginx like so:
+
+		server {
+			server_name map.hellsinker.org;
+
+			add_header X-Frame-Options DENY;
+			add_header X-Content-Type-Options nosniff;
+			add_header Content-Security-Policy "default-src none; style-src 'self' 'unsafe-inline'; img-src https: 'self';  script-src 'self' 'sha256-MDElaJcvNFhyCNF8YWlT8NsWoyXNd4Mwoz75JPz17Ok=' https://ajax.googleapis.com https://cdnjs.  cloudflare.com; connect-src wss://map.hellsinker.org";
+			add_header X-Xss-Protection "1; mode=block";
+
+			location /static {
+				root /var/www/map.hellsinker.org;
+			}
+
+			location / {
+				include proxy_params;
+				proxy_pass http://127.0.0.1:8003;
+			}
+
+			location /map.ws {
+				include proxy_params;
+				proxy_http_version 1.1;
+				proxy_read_timeout 30m;
+				proxy_set_header Upgrade $http_upgrade;
+				proxy_set_header Connection "upgrade";
+				proxy_pass http://127.0.0.1:8003;
+			}
+		}
