@@ -14,8 +14,9 @@ class Config(object):
 class WebConfig(Config):
 	attrs = frozenset([
 		'port',
-		'host',
+		'wsurl',
 		'cookie_secret',
+		'debug',
 	])
 
 __doc = yaml.load(open('config.yaml', 'r'))

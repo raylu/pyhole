@@ -17,7 +17,7 @@ import db
 
 class BaseHandler(tornado.web.RequestHandler):
 	def render(self, *args, **kwargs):
-		kwargs['host'] = config.web.host
+		kwargs['wsurl'] = config.web.wsurl
 		kwargs['path'] = self.request.uri
 		return super().render(*args, **kwargs)
 
@@ -329,7 +329,7 @@ if __name__ == '__main__':
 		cookie_secret=config.web.cookie_secret,
 		xsrf_cookies=True,
 		login_url='/',
-		debug=True,
+		debug=config.web.debug,
 	).listen(config.web.port)
 	print('Listening on :%d' % config.web.port)
 	tornado.ioloop.IOLoop.instance().start()
